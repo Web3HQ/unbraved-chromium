@@ -72,10 +72,11 @@ std::string NaivelyExtractHostnameFromUrl(std::string_view url) {
             .value_or(url);
   }
 
+  // Split on :, /, ? to separate hostname from port/path/query.
   // Known limitation: this will not work properly with origins which consist
   // of IPv6 hostnames.
   const std::vector<std::string_view> parts =
-      base::SplitStringPiece(*url_without_schema, ":/", base::KEEP_WHITESPACE,
+      base::SplitStringPiece(*url_without_schema, ":/?", base::KEEP_WHITESPACE,
                              base::SPLIT_WANT_NONEMPTY);
   if (parts.empty()) {
     return std::string();
@@ -380,6 +381,14 @@ bool DebounceRule::Apply(const GURL& original_url,
   // If the hostname of the new url as extracted via our simple parser doesn't
   // match the host as parsed via GURL, this rule does not apply
   if (NaivelyExtractHostnameFromUrl(new_url_spec) != new_url.host()) {
+    return false;
+  }
+
+  // Failsafe: ensure the destination URL has a valid eTLD+1 (e.g., reject
+  // single-part hostnames like "foo"). See
+  // https://github.com/brave/brave-browser/issues/23580
+  std::string etld_plus_one = GetETLDForDebounce(new_url.host());
+  if (etld_plus_one.empty()) {
     return false;
   }
 
