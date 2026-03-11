@@ -78,13 +78,19 @@ class AdBlockService {
     SourceProviderObserver& operator=(const SourceProviderObserver&) = delete;
     ~SourceProviderObserver() override;
 
-   private:
-    void OnFilterSetCallbackLoaded(
-        base::OnceCallback<void(rust::Box<adblock::FilterSet>*)> cb);
-    void OnFilterSetCreated(std::unique_ptr<rust::Box<adblock::FilterSet>>);
+    void PreloadCachedDAT(DATFileDataBuffer dat);
 
     // AdBlockFiltersProvider::Observer
-    void OnChanged(bool is_default_engine) override;
+    void OnChanged(bool is_default_engine, base::Time timestamp) override;
+
+   private:
+    void OnFilterSetCallbackLoaded(
+        base::Time timestamp,
+        base::OnceCallback<void(rust::Box<adblock::FilterSet>*)> cb);
+    void OnFilterSetCreated(base::Time timestamp,
+                            std::unique_ptr<rust::Box<adblock::FilterSet>>);
+
+    void OnPreloadCachedDAT(bool success);
 
     // AdBlockResourceProvider::Observer
     void OnResourcesLoaded(AdblockResourceStorageBox) override;
@@ -92,11 +98,17 @@ class AdBlockService {
     OnResourcesLoadedCallback on_resources_loaded_;
     std::unique_ptr<rust::Box<adblock::FilterSet>> filter_set_;
     const bool engine_is_default_;
+    base::Time timestamp_;
+    raw_ptr<AdBlockEngine> adblock_engine_ = nullptr;               // not owned
     raw_ptr<AdBlockResourceProvider> resource_provider_ = nullptr;  // not owned
     raw_ptr<AdBlockResourceProvider> custom_resource_provider_ =
         nullptr;  // not owned
     raw_ptr<AdBlockFiltersProviderManager> filters_provider_manager_ =
         nullptr;  // not owned
+
+    base::FilePath cache_dir_;
+    raw_ptr<PrefService> local_state_;
+    std::string_view cache_timestamp_pref_;
 
     scoped_refptr<base::SequencedTaskRunner> task_runner_;
 
@@ -163,6 +175,10 @@ class AdBlockService {
 
  private:
   static std::string g_ad_block_dat_file_version_;
+
+  void OnReadCachedDATFiles(
+      std::optional<std::pair<DATFileDataBuffer, DATFileDataBuffer>>
+          read_result);
 
   AdBlockDefaultResourceProvider* default_resource_provider();
   AdBlockComponentFiltersProvider* default_filters_provider() {
