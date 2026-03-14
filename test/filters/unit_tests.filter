@@ -123,7 +123,7 @@
 # nullptr.
 -ActorSitePolicyTest.*
 -AILanguageModelHackyPrototypeTest.Basic
--AILanguageModelTest.*
+-AILanguageModel*Test.*
 -AILanguageModelTestWithLanguageParams.PromptWithEnabledLanguages/*
 -AIManagerTest.*
 -AIProofreaderTest.*
@@ -131,8 +131,8 @@
 -AISummarizerTest.*
 -AIWriterTest.*
 -All/AILanguageModelVisionTest.*
+-All/ChangePasswordFormFinderTest.*/*
 -ChangeFormSubmissionVerifierTest.*
--ChangePasswordFormFinderTest.*
 -ChromeAutofillAiClientTest.GetModelExecutor
 -ChromeComposeClientTest.*
 -ComposeEnablingTest.*
@@ -140,6 +140,7 @@
 -ContentAnnotatorServiceFactoryTest.CreatesServiceWithFlagEnabled
 -ContentAnnotatorTabHelperTest.PropagatesLanguageEvent
 -DigitalIdentityLowRiskOriginsTest.*
+-FindsTabHelperTest.TestThresholdMet
 -HistoryEmbeddingsHandlerTest.*
 -IndigoPageActionControllerTest.*
 -LoginStateCheckerTest.*
@@ -256,6 +257,12 @@
 -BookmarkBarPreloadPipelineManagerTest.PrefetchAndPrerenderDisallowSearchUrl
 
 # This test is disabled because the Brave NTP doesn't support this feature
+-NewTabPageHandlerTest.OnAnimatedDoodleImageClicked
+-NewTabPageHandlerTest.OnAnimatedDoodleImageRendered
+-NewTabPageHandlerTest.OnStaticDoodleImageClicked
+-NewTabPageHandlerTest.OnStaticDoodleImageRendered 
+-NewTabPageHandlerTest.OnDoodleImageClicked
+-NewTabPageHandlerTest.OnDoodleImageRendered
 -NewTabPageModulesTest.HasModulesEnabled_SignedInAccount
 -NewTabPageModulesTest.MakeModuleIdDetails_*
 
@@ -310,6 +317,7 @@
 -All/SigninUiUtilTest.GetOrderedAccountsForDisplay/*
 -All/SigninUtilHistorySyncOptinForManagedSettingsTest.*
 -AppMenuModelTest.ProfileSyncOnTest
+-AvatarButtonPromoManagerTest.SigninPromoHasLastExternalEventTimeCheck
 -AvatarButtonPromoManagerTest.SigninPromoSupportIndependantProfileAndAccount*
 -BrowserSigninDetectorServiceTest.LateObservation
 -ChromeAutofillPredictionImprovementsClientTest.EligibilityOfNotSignedInUser
@@ -327,6 +335,7 @@
 -EnclaveAuthenticatorRequestDelegateTest.BrowserProvidedPasskeysAvailable
 -EnclaveAuthenticatorRequestDelegateTest.BrowserProvidedPasskeysAvailableForSignedInUsers
 -EnclaveAuthenticatorRequestDelegateTest.BrowserProvidedPasskeysAvailable_NoAccount
+-EnclaveManagerTest.CookieJarChangeDoesNotDiscardActions
 -EnclaveManagerTest.PrimaryUserChange
 -EnclaveManagerTest.StoringOpportunisticallyRetrievedKeyAfterSignInOfMatchingAccount
 -ExtensionInstalledBubbleModelTransportModeTest.ShowSigninPromo_NonExtensionsExplicitSignin
@@ -343,11 +352,7 @@
 -PeopleHandlerSignoutTest.SignoutWithSyncOn
 -PeopleHandlerTest.*
 -PeopleHandlerWebOnlySigninTest.ChromeSigninUserAvailableOnWebSignin
--ShowPromoTest.ShouldShowSyncPromoSyncEnabled
--ShowPromoTest.ShowExtensionSyncPromoWithoutFeatureFlag
--ShowPromoTest.ShowPromoWithNoAccount
--ShowPromoTest.ShowPromoWithSignedInAccount
--ShowPromoTest.ShowSyncPromoWithSignedInAccount
+-ShowPromoTest.*
 -SigninManagerSupervisedUserTest.SignoutOnCookiesDeletedAllowed
 -SigninManagerSupervisedUserTest.SignoutOnCookiesDeletedNotAllowed/*
 -SignInPromoVersionTest.SignInPromoVersions
@@ -363,7 +368,9 @@
 # These tests fail because we disable safe browsing enhanced protection and
 # patch safe_browsing::IsEnhancedProtectionEnabled to return false
 -All/ClientSideDetectionHostCreditCardFormReferringAppTest.*/*
+-All/ClientSideDetectionHostOnlyESBTest.TestPreClassificationCheckOnlyESBClassification/*
 -All/ClientSideDetectionHostSkipImageClassificationScoringTest.*/*
+-All/ClientSideDetectionServiceOnlyESBTest.TestReceivingImageClassifierUpdatesAfterResubscription/*
 -All/ClientSideDetectionServiceTest.*/*
 -All/LastDownloadFinderTest.AddProfileAfterStarting/1
 -All/LastDownloadFinderTest.NonBinaryOnly/1
@@ -491,6 +498,7 @@
 -All/PageInfoBubbleViewPrivacyAndSiteDataSubpageTitleTest.DisplaysPrivacyAndSiteDataTitle/*
 -All/PageInfoCookiesContentView3pcdTitleAndDescriptionTest.*
 -All/PageInfoCookiesContentView3pcdCookieToggleTest.*
+-All/PageInfoCookiesContentViewA11yNameTest.ThirdPartyCookiesToggleA11yName/*
 -CookieControlsUserBypassTest.*
 -PageInfoCookiesContentViewTest.*
 -PageInfoCookiesContentView3pcdCookieToggleTest.*
@@ -723,6 +731,8 @@
 -OmniboxEditModelPopupTest.AimPopupEnabledNavigationFallback
 -OmniboxEditModelPopupTest.OnCurrentMatchChangedResetsSelectionBeforeAccessingMatches
 -OmniboxEditModelTest.*
+-WebUIReadOnlyOmniboxTest.GetOmniboxTextLength
+-WebUIReadOnlyOmniboxTest.StateManagement
 
 # These tests fail because we disable uploading these event logs
 # See WebRtcLogUploader::UploadCompressedLog patch.
@@ -757,9 +767,6 @@
 
 # Read anything is disabled
 -All/RenderViewContextMenuReadAnythingTest.AppendPageItems/*
-
-# This test fails because we disable Actor Safety Lists component.
--ActorSafetyListsComponentInstallerPolicyTest.ComponentRegistered
 
 # These tests fail because it's expected that the generated tabs have
 # suggestions like "Ask Google about this tab", whereas our results have
@@ -804,6 +811,10 @@
 # https://github.com/brave/brave-core/pull/35301, it seems most of the tests
 # pass. This is the only one remaining with a failure.
 -ExtensionUpdaterTest.TestProfileDestruction
+
+# These tests fail because it's expected that the searchbox says "Ask Google",
+# whereas our searchbox says "Ask Brave"
+-SearchboxHandlerPecApiTest.GetPlaceholderConfig_*
 
 # Tests below this point have not been diagnosed or had issues created yet.
 -AboutFlagsHistogramTest.*
@@ -870,8 +881,6 @@
 -InstantNTPURLRewriteTest.*
 -ManageProfileHandlerTest.*
 -MultiProfileCredentialsFilterTest.SyncCredentialsFilter
--NewTabPageHandlerTest.OnDoodleImageClicked
--NewTabPageHandlerTest.OnDoodleImageRendered
 -NoStatePrefetchGWSPrefetchHoldbackOffTest.*
 -NoStatePrefetchTest.NoStatePrefetchDuplicate
 -NoStatePrefetchTest.MaxConcurrencyTest
