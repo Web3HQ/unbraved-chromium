@@ -7,7 +7,7 @@
 /* at a redacted point in time
  */
 /* Compiler settings for ../../brave/chromium_src/chrome/elevation_service/elevation_service_idl.idl:
-    Oicf, W1, Zp8, env=Win64 (32b run), target_arch=ARM64 8.01.0628 
+    Oicf, W1, Zp8, env=Win64 (32b run), target_arch=AMD64 8.xx.xxxx 
     protocol : dce , ms_ext, c_ext, robust
     error checks: allocation ref bounds_check enum stub_data 
     VC __declspec() decoration level: 
@@ -253,7 +253,8 @@ enum ProtectionLevel
         PROTECTION_NONE	= 0,
         PROTECTION_PATH_VALIDATION_OLD	= 1,
         PROTECTION_PATH_VALIDATION	= 2,
-        PROTECTION_MAX	= 3
+        PROTECTION_PATH_VALIDATION_WITH_ISOLATION	= 3,
+        PROTECTION_MAX	= 4
     } 	ProtectionLevel;
 
 
