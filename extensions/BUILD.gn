@@ -20,8 +20,9 @@ deprecated_visibility_allowed = [
 
   # WIP: viloated `DO NOT ADD TO THIS LIST` mark
   # to unblock the CI build from gn_check
-  # failure
-  "//chrome/browser/content_settings:unit_tests",
+  # failure. With this at least we don't need patch
+  # at chrome/browser/content_settings:unit_tests
+  "//chrome/browser:browser_public_dependencies",
 ]
 
 if (enable_extensions) {
