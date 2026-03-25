@@ -16,6 +16,8 @@
 #include "base/notreached.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
+#include "base/json/json_reader.h"
+#include "base/json/json_writer.h"
 #include "base/values.h"
 #include "brave/components/brave_wallet/browser/account_discovery_manager.h"
 #include "brave/components/brave_wallet/browser/bitcoin/bitcoin_wallet_service.h"
@@ -2094,6 +2096,30 @@ void BraveWalletService::WriteToClipboard(const std::string& text,
 #else
   NOTREACHED();
 #endif
+}
+
+void BraveWalletService::InvokeSnap(const std::string& snap_id,
+                                    const std::string& method,
+                                    const std::string& params_json,
+                                    InvokeSnapCallback callback) {
+  auto params = base::JSONReader::Read(params_json, base::JSON_PARSE_RFC);
+  if (!params) {
+    std::move(callback).Run(std::nullopt, "Invalid params JSON");
+    return;
+  }
+  snap_controller_->InvokeSnap(
+      snap_id, method, std::move(*params),
+      base::BindOnce(
+          [](InvokeSnapCallback cb,
+             std::optional<base::Value> result,
+             std::optional<std::string> error) {
+            std::optional<std::string> result_json;
+            if (result) {
+              result_json = base::WriteJson(*result);
+            }
+            std::move(cb).Run(result_json, error);
+          },
+          std::move(callback)));
 }
 
 base::CallbackListSubscription

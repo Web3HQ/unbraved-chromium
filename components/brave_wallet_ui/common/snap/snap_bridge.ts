@@ -14,6 +14,7 @@
 // snap.request().
 
 import { BraveWallet } from '../../constants/types'
+import type { Value as MojoValue } from 'chrome://resources/mojo/mojo/public/mojom/base/values.mojom-webui.js'
 import {
   makeLoadSnapCommand,
   makeInvokeSnapCommand,
@@ -24,6 +25,60 @@ import {
 } from './snap_messages'
 
 const SNAP_EXECUTOR_ORIGIN = 'chrome-untrusted://snap-executor'
+
+// Parameters passed to the dialog handler when a snap calls snap_dialog or snap_confirm.
+export interface SnapDialogParams {
+  // 'confirmation' | 'alert' | 'prompt' — or legacy snap_confirm
+  dialogType: string
+  // JSX component tree (PascalCase types) for modern snap_dialog
+  content?: unknown
+  // Legacy snap_confirm fields
+  prompt?: string
+  description?: string
+  textAreaContent?: string
+}
+
+// Convert a mojo_base.mojom.Value tagged union to a plain JS value.
+export function mojoValueToJs(v: MojoValue | null | undefined): unknown {
+  if (v === null || v === undefined) { return null }
+  if (v.nullValue !== undefined) { return null }
+  if (v.boolValue !== undefined) { return v.boolValue }
+  if (v.intValue !== undefined) { return v.intValue }
+  if (v.doubleValue !== undefined) { return v.doubleValue }
+  if (v.stringValue !== undefined) { return v.stringValue }
+  if (v.listValue !== undefined) {
+    return v.listValue.storage.map((item) => mojoValueToJs(item))
+  }
+  if (v.dictionaryValue !== undefined) {
+    const obj: Record<string, unknown> = {}
+    for (const [k, val] of Object.entries(v.dictionaryValue.storage)) {
+      obj[k] = mojoValueToJs(val)
+    }
+    return obj
+  }
+  return null
+}
+
+// Convert a plain JS value to a mojo_base.mojom.Value tagged union.
+export function jsToMojoValue(v: unknown): MojoValue {
+  if (v === null || v === undefined) { return { nullValue: 0 } }
+  if (typeof v === 'boolean') { return { boolValue: v } }
+  if (typeof v === 'number') {
+    return Number.isInteger(v) ? { intValue: v } : { doubleValue: v }
+  }
+  if (typeof v === 'string') { return { stringValue: v } }
+  if (Array.isArray(v)) {
+    return { listValue: { storage: v.map((item) => jsToMojoValue(item)) } }
+  }
+  if (typeof v === 'object') {
+    const storage: Record<string, MojoValue> = {}
+    for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+      storage[k] = jsToMojoValue(val)
+    }
+    return { dictionaryValue: { storage } }
+  }
+  return { nullValue: 0 }
+}
 
 function generateRequestId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`
@@ -49,6 +104,12 @@ export class SnapBridge {
   // The Mojo receiver wrapping this class (created in step 12).
   private receiver: BraveWallet.SnapBridgeReceiver | null = null
 
+  // Handler for snap_dialog / snap_confirm — set by the wallet page container
+  // to show a confirmation modal. Returns true (confirmed) or false (rejected).
+  private dialogHandler:
+    | ((params: SnapDialogParams) => Promise<boolean>)
+    | null = null
+
   // Element to which snap iframes are appended.
   private readonly container: HTMLElement
 
@@ -65,6 +126,14 @@ export class SnapBridge {
     this.snapRequestHandler = handler
   }
 
+  // Register a handler for snap_dialog / snap_confirm. The wallet page
+  // container sets this to show a confirmation modal to the user.
+  setDialogHandler(
+    handler: (params: SnapDialogParams) => Promise<boolean>,
+  ): void {
+    this.dialogHandler = handler
+  }
+
   // Returns the Mojo receiver for this bridge so the pipe endpoint can be
   // handed to C++ (used in step 12).
   bindNewPipeAndPassRemote() {
@@ -79,24 +148,35 @@ export class SnapBridge {
 
   async loadSnap(
     snapId: string,
-    snapSource: string,
   ): Promise<{ success: boolean; error: string | null }> {
-    let iframe = this.iframes.get(snapId)
-    if (!iframe) {
-      iframe = await this.createAndWaitForIframe(snapId)
-    }
+    try {
+      console.error('XXXZZZ SnapBridge.loadSnap', snapId)
+      let iframe = this.iframes.get(snapId)
+      if (!iframe) {
+        console.error('XXXZZZ SnapBridge.loadSnap: creating iframe')
+        iframe = await this.createAndWaitForIframe(snapId)
+        console.error('XXXZZZ SnapBridge.loadSnap: iframe loaded', iframe.src)
+      }
 
-    const requestId = generateRequestId()
-    const response = await this.sendToIframe(
-      iframe,
-      makeLoadSnapCommand(snapId, snapSource, requestId),
-      requestId,
-    )
+      const requestId = generateRequestId()
+      console.error('XXXZZZ SnapBridge.loadSnap: sending load_snap requestId=', requestId)
+      const response = await this.sendToIframe(
+        iframe,
+        makeLoadSnapCommand(snapId, requestId),
+        requestId,
+      )
+      console.error('XXXZZZ SnapBridge.loadSnap: got response from iframe', response)
 
-    if (response.error) {
-      return { success: false, error: response.error }
+      if (response.error) {
+        console.error('XXXZZZ SnapBridge.loadSnap ERROR:', response.error)
+        return { success: false, error: response.error }
+      }
+      return { success: true, error: null }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error('XXXZZZ SnapBridge.loadSnap ERROR (thrown):', msg)
+      return { success: false, error: msg }
     }
-    return { success: true, error: null }
   }
 
   async invokeSnap(
@@ -104,22 +184,124 @@ export class SnapBridge {
     method: string,
     params: unknown,
   ): Promise<{ result: unknown | null; error: string | null }> {
+    try {
+      const iframe = this.iframes.get(snapId)
+      if (!iframe) {
+        return { result: null, error: `Snap '${snapId}' is not loaded` }
+      }
+
+      // Convert Mojo tagged-union params to a plain JS value for postMessage.
+      const plainParams = mojoValueToJs(params as MojoValue)
+
+      const requestId = generateRequestId()
+      console.error('XXXZZZ SnapBridge.invokeSnap sending invoke to iframe, method=', method)
+      const response = await this.sendToIframe(
+        iframe,
+        makeInvokeSnapCommand(method, plainParams, this.getCallerOrigin(), requestId),
+        requestId,
+      )
+      console.error('XXXZZZ SnapBridge.invokeSnap got response', response)
+
+      if (response.error) {
+        return { result: null, error: response.error }
+      }
+      // Convert plain JS result back to Mojo tagged union for serialization.
+      const mojoResult = response.result !== undefined && response.result !== null
+        ? jsToMojoValue(response.result)
+        : null
+      return { result: mojoResult, error: null }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error('XXXZZZ SnapBridge.invokeSnap ERROR:', msg)
+      return { result: null, error: msg }
+    }
+  }
+
+  // Proxy an HTTP GET through the snap executor iframe (which has connect-src *).
+  // The wallet page CSP is too strict for direct external fetches.
+  async proxyFetch(snapId: string, url: string): Promise<string> {
     const iframe = this.iframes.get(snapId)
     if (!iframe) {
-      return { result: null, error: `Snap '${snapId}' is not loaded` }
+      throw new Error('Snap not loaded — load snap before proxyFetch')
     }
-
     const requestId = generateRequestId()
     const response = await this.sendToIframe(
       iframe,
-      makeInvokeSnapCommand(method, params, this.getCallerOrigin(), requestId),
+      { type: 'proxy_fetch', url, requestId },
       requestId,
     )
-
     if (response.error) {
-      return { result: null, error: response.error }
+      throw new Error(response.error)
     }
-    return { result: response.result ?? null, error: null }
+    return (response.result as string) ?? ''
+  }
+
+  // Calls the snap's onHomePage() handler and returns the component tree.
+  // The snap must be loaded first (loadSnap).
+  async getHomePage(snapId: string): Promise<{ content: unknown; interfaceId?: string; error?: string }> {
+    try {
+      let iframe = this.iframes.get(snapId)
+      if (!iframe) {
+        iframe = await this.createAndWaitForIframe(snapId)
+        // Load the snap so onHomePage handler is captured
+        const requestId = generateRequestId()
+        const loadResp = await this.sendToIframe(
+          iframe,
+          makeLoadSnapCommand(snapId, requestId),
+          requestId,
+        )
+        if (loadResp.error) {
+          return { content: null, error: loadResp.error }
+        }
+      }
+
+      const requestId = generateRequestId()
+      const response = await this.sendToIframe(
+        iframe,
+        { type: 'get_homepage', requestId },
+        requestId,
+      )
+      if (response.error) {
+        return { content: null, error: response.error }
+      }
+      // response.result is { content, interfaceId? } from snap executor
+      const result = response.result as Record<string, unknown> | undefined
+      return {
+        content: result?.content ?? result,
+        interfaceId: result?.interfaceId as string | undefined,
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      return { content: null, error: msg }
+    }
+  }
+
+  // Sends a user interaction event to the snap's onUserInput handler.
+  // Returns the updated interface content after the snap processes the event.
+  async sendUserInput(
+    snapId: string,
+    interfaceId: string,
+    event: object,
+  ): Promise<{ content: unknown; error?: string }> {
+    try {
+      const iframe = this.iframes.get(snapId)
+      if (!iframe) {
+        return { content: null, error: `Snap '${snapId}' is not loaded` }
+      }
+      const requestId = generateRequestId()
+      const response = await this.sendToIframe(
+        iframe,
+        { type: 'user_input', interfaceId, event, requestId },
+        requestId,
+      )
+      if (response.error) {
+        return { content: null, error: response.error }
+      }
+      return { content: response.result }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      return { content: null, error: msg }
+    }
   }
 
   unloadSnap(snapId: string): void {
@@ -140,14 +322,21 @@ export class SnapBridge {
   ): Promise<HTMLIFrameElement> {
     return new Promise((resolve) => {
       const iframe = document.createElement('iframe')
-      iframe.src = 'chrome-untrusted://snap-executor/'
-      // allow-scripts is the minimum required; no allow-same-origin so the
-      // iframe cannot access the parent's DOM or storage.
-      iframe.setAttribute('sandbox', 'allow-scripts')
+      // Each snap gets its own URL (with ?snap_id=) so the iframe document
+      // knows its snap identity from location.search, independent of the
+      // load_snap postMessage. Different URLs also make DevTools easier to use.
+      iframe.src = `chrome-untrusted://snap-executor/?snap_id=${encodeURIComponent(snapId)}`
+      // allow-same-origin is required for chrome-untrusted:// WebUI to
+      // initialise correctly (mirrors ledger-bridge pattern). The iframe
+      // origin is chrome-untrusted://snap-executor — cross-origin from the
+      // parent chrome://wallet — so allow-same-origin does NOT grant access
+      // to the parent's DOM or storage.
+      iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin')
       iframe.style.display = 'none'
       iframe.addEventListener('load', () => resolve(iframe), { once: true })
       this.container.appendChild(iframe)
       this.iframes.set(snapId, iframe)
+      console.error('XXXZZZ SnapBridge: iframe attached to DOM for', snapId)
     })
   }
 
@@ -196,6 +385,42 @@ export class SnapBridge {
     }
   }
 
+  // Parses snap_dialog / snap_confirm params and delegates to the
+  // registered dialogHandler. Returns the user's boolean choice.
+  private async handleSnapDialog(
+    method: string,
+    params: unknown,
+  ): Promise<boolean> {
+    if (!this.dialogHandler) {
+      console.warn('SnapBridge: no dialogHandler registered, auto-confirming')
+      return true
+    }
+
+    let dialogParams: SnapDialogParams
+
+    if (method === 'snap_confirm') {
+      // Legacy format: params is an array with one object
+      const p = Array.isArray(params) ? params[0] : params
+      const obj = (p ?? {}) as Record<string, unknown>
+      dialogParams = {
+        dialogType: 'confirmation',
+        prompt: obj.prompt as string | undefined,
+        description: obj.description as string | undefined,
+        textAreaContent: obj.textAreaContent as string | undefined,
+      }
+    } else {
+      // Modern snap_dialog: params is { type, content } or an array
+      const p = Array.isArray(params) ? params[0] : params
+      const obj = (p ?? {}) as Record<string, unknown>
+      dialogParams = {
+        dialogType: (obj.type as string) ?? 'confirmation',
+        content: obj.content,
+      }
+    }
+
+    return this.dialogHandler(dialogParams)
+  }
+
   // Relays a snap.request() call from the iframe to C++ and posts the
   // response back to the originating iframe.
   private async relaySnapRequest(msg: SnapRequestMessage): Promise<void> {
@@ -211,20 +436,42 @@ export class SnapBridge {
       )
     }
 
+    // Intercept snap_dialog / snap_confirm — render UI on the wallet page
+    // instead of forwarding to C++ (which would auto-confirm).
+    if (msg.method === 'snap_dialog' || msg.method === 'snap_confirm') {
+      try {
+        const confirmed = await this.handleSnapDialog(msg.method, msg.params)
+        postResponse(confirmed)
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err)
+        postResponse(undefined, errMsg)
+      }
+      return
+    }
+
     if (!this.snapRequestHandler) {
       postResponse(undefined, 'SnapRequestHandler not connected')
       return
     }
 
     try {
+      // JSON round-trip strips MetaMask snap Component class instances
+      // (panel/text/heading) to plain objects, then wrap as Mojo Value union.
+      let plainParams: unknown = {}
+      try {
+        plainParams = JSON.parse(JSON.stringify(msg.params ?? {}))
+      } catch {
+        plainParams = {}
+      }
+
       const { result, error } =
         await this.snapRequestHandler.handleSnapRequest(
           msg.snapId,
           msg.method,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          msg.params as any,
+          jsToMojoValue(plainParams) as any,
         )
-      postResponse(result, error ?? undefined)
+      // Convert Mojo Value result back to plain JS for the snap executor.
+      postResponse(mojoValueToJs(result ?? null), error ?? undefined)
     } catch (err) {
       const msg2 = err instanceof Error ? err.message : String(err)
       postResponse(undefined, msg2)

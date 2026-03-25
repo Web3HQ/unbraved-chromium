@@ -8,6 +8,7 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 
 #include "base/functional/callback_forward.h"
 #include "base/memory/raw_ptr.h"
@@ -78,20 +79,31 @@ class SnapController : public mojom::SnapRequestHandler {
                         base::Value params,
                         HandleSnapRequestCallback callback);
 
+  // Called when the SnapBridge Mojo pipe disconnects. Fails all pending
+  // callbacks so their EthereumProvider responders are not destroyed silently.
+  void OnSnapBridgeDisconnected();
+
   // Callbacks from the SnapBridge remote.
-  void OnLoadSnapResult(const std::string& snap_id,
+  void OnLoadSnapResult(size_t callback_index,
+                        const std::string& snap_id,
                         const std::string& method,
                         base::Value params,
-                        SnapResultCallback callback,
                         bool success,
                         const std::optional<std::string>& error);
-  void OnInvokeSnapResult(SnapResultCallback callback,
+  void OnInvokeSnapResult(size_t callback_index,
                           std::optional<base::Value> result,
                           const std::optional<std::string>& error);
+
+  // Drains one pending callback with an error. No-op if index is stale.
+  void FailPendingCallback(size_t index, const std::string& error);
 
   raw_ptr<KeyringService> keyring_service_;
   mojo::Remote<mojom::SnapBridge> snap_bridge_;
   mojo::Receiver<mojom::SnapRequestHandler> receiver_{this};
+
+  // Pending SnapResultCallbacks indexed by slot. A null entry means the slot
+  // was already consumed (invoke completed or failed).
+  std::vector<SnapResultCallback> pending_callbacks_;
 
   base::WeakPtrFactory<SnapController> weak_ptr_factory_{this};
 };

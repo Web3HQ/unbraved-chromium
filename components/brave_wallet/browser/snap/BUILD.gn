@@ -20,6 +20,7 @@ source_set("snap") {
   deps = [
     "//base",
     "//brave/components/brave_wallet/common:mojom",
+    "//brave/components/resources:static_resources",
     "//components/prefs",
     "//mojo/public/cpp/bindings",
     "//url",

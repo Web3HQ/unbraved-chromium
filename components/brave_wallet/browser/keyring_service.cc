@@ -38,6 +38,7 @@
 #include "brave/components/brave_wallet/browser/cardano/cardano_cip30_serializer.h"
 #include "brave/components/brave_wallet/browser/cardano/cardano_hd_keyring.h"
 #include "brave/components/brave_wallet/browser/ethereum_keyring.h"
+#include "brave/components/brave_wallet/browser/internal/hd_key.h"
 #include "brave/components/brave_wallet/browser/filecoin_keyring.h"
 #include "brave/components/brave_wallet/browser/json_keystore_parser.h"
 #include "brave/components/brave_wallet/browser/json_rpc_service.h"
@@ -3450,6 +3451,61 @@ void KeyringService::MaybeFixAccountSelection() {
     // selection.
     SetSelectedDappAccountInternal(mojom::CoinType::SOL, {});
   }
+}
+
+void KeyringService::GetBip44EntropyForSnap(
+    uint32_t coin_type,
+    base::OnceCallback<void(std::optional<base::Value>)> callback) {
+  if (IsLockedSync()) {
+    std::move(callback).Run(std::nullopt);
+    return;
+  }
+
+  DCHECK(encryptor_);
+  auto mnemonic = DecryptWalletMnemonicFromPrefs(profile_prefs_, *encryptor_);
+  if (!mnemonic) {
+    std::move(callback).Run(std::nullopt);
+    return;
+  }
+
+  auto keyring_seed =
+      MakeSeedFromMnemonic(*mnemonic, IsLegacyEthSeedFormat(profile_prefs_));
+  if (!keyring_seed) {
+    std::move(callback).Run(std::nullopt);
+    return;
+  }
+
+  auto root = HDKey::GenerateFromSeed(keyring_seed->seed);
+  if (!root) {
+    std::move(callback).Run(std::nullopt);
+    return;
+  }
+
+  auto purpose = root->DeriveChild(DerivationIndex::Hardened(44));
+  if (!purpose) {
+    std::move(callback).Run(std::nullopt);
+    return;
+  }
+
+  auto coin_node = purpose->DeriveChild(DerivationIndex::Hardened(coin_type));
+  if (!coin_node) {
+    std::move(callback).Run(std::nullopt);
+    return;
+  }
+
+  base::Value::Dict result;
+  result.Set("privateKey",
+             "0x" + base::HexEncode(coin_node->GetPrivateKeyBytes()));
+  result.Set("publicKey",
+             "0x" + base::HexEncode(coin_node->GetPublicKeyBytes()));
+  result.Set("chainCode",
+             "0x" + base::HexEncode(coin_node->GetChainCodeBytes()));
+  result.Set("depth", static_cast<int>(coin_node->GetDepth()));
+  result.Set("parentFingerprint",
+             static_cast<int>(coin_node->GetParentFingerprint()));
+  result.Set("index", static_cast<int>(coin_node->GetIndex()));
+
+  std::move(callback).Run(base::Value(std::move(result)));
 }
 
 void KeyringService::MaybeUnlockWithCommandLine() {

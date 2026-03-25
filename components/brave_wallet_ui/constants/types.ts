@@ -586,6 +586,15 @@ export enum WalletRoutes {
   // dev zcash screen
   DevZCash = '/dev-zcash',
 
+  // dev cosmos snap screen
+  DevCosmos = '/dev-cosmos',
+
+  // dev filecoin snap screen
+  DevFilecoin = '/dev-filecoin',
+
+  // dev polkadot snap screen
+  DevPolkadot = '/dev-polkadot',
+
   // panel connection screen
   Connections = '/crypto/connections',
 

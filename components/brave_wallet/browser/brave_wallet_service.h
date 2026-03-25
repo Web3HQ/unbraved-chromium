@@ -289,6 +289,11 @@ class BraveWalletService : public KeyedService,
 
   void WriteToClipboard(const std::string& text, bool is_sensitive) override;
 
+  void InvokeSnap(const std::string& snap_id,
+                  const std::string& method,
+                  const std::string& params_json,
+                  InvokeSnapCallback callback) override;
+
   // BraveWalletServiceDelegate::Observer:
   void OnActiveOriginChanged(const mojom::OriginInfoPtr& origin_info) override;
 

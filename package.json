@@ -202,6 +202,10 @@
   },
   "dependencies": {
     "@brave/brave-ui": "0.40.6",
+    "filsnap": "1.6.1",
+    "@polkagate/snap": "2.5.1",
+    "@cosmsnap/snap": "0.1.22",
+    "@metamask/snaps-sdk": "6.17.1",
     "@brave/leo": "github:brave/leo#06376aecde3e85ee7b36f08afb2dc52d2e33bf22",
     "@brave/leo-sf-symbols": "github:brave/leo-sf-symbols#17e29a0f1ffafdeefafc3015c687fc3f449401dc",
     "@brave/wallet-standard-brave": "0.0.16",

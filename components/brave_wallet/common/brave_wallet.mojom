@@ -3334,6 +3334,14 @@ interface BraveWalletService {
   SetTransactionSimulationOptInStatus(BlowfishOptInStatus status);
 
   WriteToClipboard(string text, bool is_sensitive);
+
+  // Invoke a snap RPC method from the wallet UI. Equivalent to
+  // window.ethereum.request({ method: 'wallet_invokeSnap', ... }) but usable
+  // from chrome:// pages that have no window.ethereum.
+  // params_json and result_json are JSON-serialized to avoid mojo_base.mojom.Value
+  // tagged-union complexity when called from TypeScript.
+  InvokeSnap(string snap_id, string method, string params_json)
+      => (string? result_json, string? error);
 };
 
 // For reporting wallet related P3A metrics.
@@ -4068,8 +4076,10 @@ interface SimulationService {
 // Implemented by the wallet page TypeScript (SnapBridge).
 // Called from SnapController (C++) to manage snap iframes.
 interface SnapBridge {
-  // Create an iframe for the snap, load SES + snap source code.
-  LoadSnap(string snap_id, string snap_source)
+  // Create an iframe for the snap and load its bundle via fetch() on the
+  // snap executor origin. The bundle URL is derived from snap_id by the
+  // executor itself — no source string passes through Mojo.
+  LoadSnap(string snap_id)
       => (bool success, string? error);
 
   // Execute an RPC call on the snap (in its iframe).

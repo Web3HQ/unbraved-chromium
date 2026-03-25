@@ -20,18 +20,37 @@ UntrustedSnapExecutorUI::UntrustedSnapExecutorUI(content::WebUI* web_ui)
 
   untrusted_source->SetDefaultResource(IDR_BRAVE_WALLET_SNAP_EXECUTOR_HTML);
   untrusted_source->AddResourcePaths(kSnapExecutorGenerated);
+  // Cosmos snap bundle — fetched by snap_executor.ts via fetch('snap-bundles/cosmos.js').
+  // Served from this origin so WebUIDataSource handles gzip decompression automatically.
+  untrusted_source->AddResourcePath("snap-bundles/cosmos.js",
+                                    IDR_BRAVE_WALLET_COSMOS_SNAP_JS);
+  // Filecoin snap bundle — fetched via fetch('snap-bundles/filecoin.js').
+  untrusted_source->AddResourcePath("snap-bundles/filecoin.js",
+                                    IDR_BRAVE_WALLET_FILECOIN_SNAP_JS);
+  // Polkadot snap bundle — fetched via fetch('snap-bundles/polkadot.js').
+  untrusted_source->AddResourcePath("snap-bundles/polkadot.js",
+                                    IDR_BRAVE_WALLET_POLKADOT_SNAP_JS);
 
   // Only allow embedding from wallet page and wallet panel.
   untrusted_source->AddFrameAncestor(GURL(kBraveUIWalletPageURL));
   untrusted_source->AddFrameAncestor(GURL(kBraveUIWalletPanelURL));
 
   // Strict CSP: snaps must not make network requests or load sub-frames.
+  // 'unsafe-eval' is required because SES Compartment.evaluate() uses
+  // new Function() internally to run snap code in an isolated scope.
   untrusted_source->OverrideContentSecurityPolicy(
       network::mojom::CSPDirectiveName::ScriptSrc,
-      "script-src 'self';");
+      "script-src 'self' 'unsafe-eval';");
+  // Disable Trusted Types — SES Compartment passes a plain string to
+  // new Function() which violates the default TT policy on WebUI pages.
+  untrusted_source->OverrideContentSecurityPolicy(
+      network::mojom::CSPDirectiveName::RequireTrustedTypesFor,
+      "");
+  // 'self' for snap bundle fetch(); '*' for snap endowment:network-access
+  // (Cosmos snap queries chain RPC/REST endpoints).
   untrusted_source->OverrideContentSecurityPolicy(
       network::mojom::CSPDirectiveName::ConnectSrc,
-      "connect-src 'none';");
+      "connect-src 'self' *;");
   untrusted_source->OverrideContentSecurityPolicy(
       network::mojom::CSPDirectiveName::FrameSrc,
       "frame-src 'none';");

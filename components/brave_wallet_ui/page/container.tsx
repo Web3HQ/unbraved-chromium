@@ -67,6 +67,9 @@ import { UnlockedWalletRoutes } from './router/unlocked_wallet_routes'
 import { Swap } from './screens/swap/swap'
 import { SendScreen } from './screens/send/send_screen/send_screen'
 import { DevZCash } from './screens/dev-zcash/dev-zcash'
+import { DevCosmos } from './screens/dev-cosmos/dev-cosmos'
+import { DevFilecoin } from './screens/dev-filecoin/dev-filecoin'
+import { DevPolkadot } from './screens/dev-polkadot/dev-polkadot'
 import {
   PartnersConsentModal, //
 } from '../components/desktop/popup-modals/partners_consent_modal/partners_consent_modal'
@@ -300,6 +303,33 @@ export const Container = () => {
           redirectRoute={defaultRedirect}
         >
           <DevZCash />
+        </ProtectedRoute>
+
+        <ProtectedRoute
+          path={WalletRoutes.DevCosmos}
+          exact={true}
+          requirement={!isWalletLocked && !walletNotYetCreated}
+          redirectRoute={defaultRedirect}
+        >
+          <DevCosmos />
+        </ProtectedRoute>
+
+        <ProtectedRoute
+          path={WalletRoutes.DevFilecoin}
+          exact={true}
+          requirement={!isWalletLocked && !walletNotYetCreated}
+          redirectRoute={defaultRedirect}
+        >
+          <DevFilecoin />
+        </ProtectedRoute>
+
+        <ProtectedRoute
+          path={WalletRoutes.DevPolkadot}
+          exact={true}
+          requirement={!isWalletLocked && !walletNotYetCreated}
+          redirectRoute={defaultRedirect}
+        >
+          <DevPolkadot />
         </ProtectedRoute>
 
         {/* Insures that we redirect to the default route if the user

@@ -10,8 +10,8 @@
 #include "base/functional/bind.h"
 #include "base/logging.h"
 #include "base/values.h"
-// keyring_service.h is included by the parent browser target that pulls in
-// this source_set; the forward declaration in the header is sufficient here.
+#include "brave/components/brave_wallet/browser/keyring_service.h"
+#include "brave/components/brave_wallet/browser/snap/snap_registry.h"
 
 namespace brave_wallet {
 
@@ -30,41 +30,88 @@ void SnapController::BindSnapRequestHandler(
 
 void SnapController::SetSnapBridge(
     mojo::PendingRemote<mojom::SnapBridge> bridge) {
+  LOG(ERROR) << "XXXZZZ SnapController::SetSnapBridge called, pending_callbacks="
+             << pending_callbacks_.size();
   snap_bridge_.reset();
   snap_bridge_.Bind(std::move(bridge));
+  snap_bridge_.set_disconnect_handler(
+      base::BindOnce(&SnapController::OnSnapBridgeDisconnected,
+                     weak_ptr_factory_.GetWeakPtr()));
+}
+
+void SnapController::OnSnapBridgeDisconnected() {
+  LOG(ERROR) << "XXXZZZ SnapController::OnSnapBridgeDisconnected — failing "
+             << pending_callbacks_.size() << " pending callback(s)";
+  for (size_t i = 0; i < pending_callbacks_.size(); ++i) {
+    FailPendingCallback(i, "SnapBridge disconnected");
+  }
+}
+
+void SnapController::FailPendingCallback(size_t index,
+                                         const std::string& error) {
+  if (index >= pending_callbacks_.size() || !pending_callbacks_[index]) {
+    return;
+  }
+  std::move(pending_callbacks_[index]).Run(std::nullopt, error);
 }
 
 void SnapController::InvokeSnap(const std::string& snap_id,
                                 const std::string& method,
                                 base::Value params,
                                 SnapResultCallback callback) {
+  LOG(ERROR) << "XXXZZZ SnapController::InvokeSnap snap_id=" << snap_id
+             << " method=" << method;
+
   if (!snap_bridge_.is_connected()) {
+    LOG(ERROR) << "XXXZZZ SnapController::InvokeSnap ERROR: SnapBridge not connected";
     std::move(callback).Run(std::nullopt, "SnapBridge is not connected");
     return;
   }
 
-  // Load the snap first. The snap source is looked up from the registry; for
-  // now we pass an empty source — snap_registry.cc will be wired up in a
-  // subsequent step.
-  const std::string snap_source;  // TODO(snap): look up from SnapRegistry
+  auto manifest = SnapRegistry::GetManifest(snap_id);
+  if (!manifest) {
+    LOG(ERROR) << "XXXZZZ SnapController::InvokeSnap ERROR: unknown snap " << snap_id;
+    std::move(callback).Run(std::nullopt, "Unknown snap: " + snap_id);
+    return;
+  }
 
+  // Store the callback so OnSnapBridgeDisconnected can fail it if the
+  // SnapBridge pipe closes before InvokeSnap completes.
+  const size_t cb_index = pending_callbacks_.size();
+  pending_callbacks_.push_back(std::move(callback));
+
+  // The snap bundle is served by chrome-untrusted://snap-executor/ and fetched
+  // directly by snap_executor.ts — no source string passes through Mojo.
   snap_bridge_->LoadSnap(
-      snap_id, snap_source,
+      snap_id,
       base::BindOnce(&SnapController::OnLoadSnapResult,
-                     weak_ptr_factory_.GetWeakPtr(), snap_id, method,
-                     std::move(params), std::move(callback)));
+                     weak_ptr_factory_.GetWeakPtr(), cb_index, snap_id, method,
+                     std::move(params)));
 }
 
 void SnapController::HandleSnapRequest(const std::string& snap_id,
                                        const std::string& method,
                                        base::Value params,
                                        HandleSnapRequestCallback callback) {
+  LOG(ERROR) << "XXXZZZ SnapController::HandleSnapRequest snap_id=" << snap_id
+             << " method=" << method;
   if (method == "snap_getBip44Entropy") {
     HandleGetBip44Entropy(snap_id, std::move(params), std::move(callback));
   } else if (method == "snap_getEntropy") {
     HandleGetEntropy(snap_id, std::move(params), std::move(callback));
+  } else if (method == "snap_dialog" || method == "snap_confirm") {
+    // snap_confirm is the legacy name for snap_dialog with type "confirmation".
+    // Both auto-confirm for now — real UI TBD.
+    LOG(ERROR) << "XXXZZZ SnapController::HandleSnapRequest " << method
+               << " auto-confirmed";
+    std::move(callback).Run(base::Value(true), std::nullopt);
+  } else if (method == "snap_notify") {
+    // Notifications are fire-and-forget; acknowledge silently.
+    LOG(ERROR) << "XXXZZZ SnapController::HandleSnapRequest snap_notify received";
+    std::move(callback).Run(std::nullopt, std::nullopt);
   } else {
-    DVLOG(1) << "SnapController: unhandled snap.request() method: " << method;
+    LOG(ERROR) << "XXXZZZ SnapController::HandleSnapRequest unsupported method="
+               << method;
     std::move(callback).Run(std::nullopt,
                             "Unsupported snap method: " + method);
   }
@@ -76,11 +123,44 @@ void SnapController::HandleGetBip44Entropy(
     const std::string& snap_id,
     base::Value params,
     HandleSnapRequestCallback callback) {
-  // TODO(snap): extract coin_type from params, call KeyringService to derive
-  // the BIP-44 entropy for the snap's permitted coin type, and return it.
-  // Placeholder until the full key derivation flow is implemented.
-  std::move(callback).Run(std::nullopt,
-                          "snap_getBip44Entropy not yet implemented");
+  LOG(ERROR) << "XXXZZZ SnapController::HandleGetBip44Entropy snap_id="
+             << snap_id;
+  // params: { "coinType": <uint32> }
+  const base::Value::Dict* dict = params.GetIfDict();
+  if (!dict) {
+    LOG(ERROR) << "XXXZZZ SnapController::HandleGetBip44Entropy ERROR: params not a dict";
+    std::move(callback).Run(std::nullopt,
+                            "snap_getBip44Entropy: params must be a dict");
+    return;
+  }
+
+  std::optional<int> coin_type = dict->FindInt("coinType");
+  if (!coin_type || *coin_type < 0) {
+    LOG(ERROR) << "XXXZZZ SnapController::HandleGetBip44Entropy ERROR: missing/invalid coinType";
+    std::move(callback).Run(std::nullopt,
+                            "snap_getBip44Entropy: missing or invalid coinType");
+    return;
+  }
+  LOG(ERROR) << "XXXZZZ SnapController::HandleGetBip44Entropy coinType=" << *coin_type;
+
+  keyring_service_->GetBip44EntropyForSnap(
+      static_cast<uint32_t>(*coin_type),
+      base::BindOnce(
+          [](HandleSnapRequestCallback cb,
+             std::optional<base::Value> result) {
+            if (!result) {
+              LOG(ERROR) << "XXXZZZ SnapController::HandleGetBip44Entropy ERROR: "
+                            "key derivation failed (wallet locked?)";
+              std::move(cb).Run(
+                  std::nullopt,
+                  "snap_getBip44Entropy: key derivation failed "
+                  "(wallet may be locked)");
+              return;
+            }
+            LOG(ERROR) << "XXXZZZ SnapController::HandleGetBip44Entropy: entropy derived OK";
+            std::move(cb).Run(std::move(result), std::nullopt);
+          },
+          std::move(callback)));
 }
 
 void SnapController::HandleGetEntropy(const std::string& snap_id,
@@ -93,29 +173,47 @@ void SnapController::HandleGetEntropy(const std::string& snap_id,
 }
 
 void SnapController::OnLoadSnapResult(
+    size_t cb_index,
     const std::string& snap_id,
     const std::string& method,
     base::Value params,
-    SnapResultCallback callback,
     bool success,
     const std::optional<std::string>& error) {
+  LOG(ERROR) << "XXXZZZ SnapController::OnLoadSnapResult snap_id=" << snap_id
+             << " method=" << method << " success=" << success
+             << (error ? " error=" + *error : "");
   if (!success) {
-    std::move(callback).Run(
-        std::nullopt, error.value_or("Failed to load snap: unknown error"));
+    LOG(ERROR) << "XXXZZZ SnapController::OnLoadSnapResult ERROR: "
+               << error.value_or("unknown error");
+    FailPendingCallback(
+        cb_index, error.value_or("Failed to load snap: unknown error"));
+    return;
+  }
+
+  if (!snap_bridge_.is_connected()) {
+    LOG(ERROR) << "XXXZZZ SnapController::OnLoadSnapResult ERROR: "
+                  "SnapBridge disconnected before InvokeSnap";
+    FailPendingCallback(cb_index, "SnapBridge disconnected");
     return;
   }
 
   snap_bridge_->InvokeSnap(
       snap_id, method, std::move(params),
       base::BindOnce(&SnapController::OnInvokeSnapResult,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
+                     weak_ptr_factory_.GetWeakPtr(), cb_index));
 }
 
 void SnapController::OnInvokeSnapResult(
-    SnapResultCallback callback,
+    size_t cb_index,
     std::optional<base::Value> result,
     const std::optional<std::string>& error) {
-  std::move(callback).Run(std::move(result), error);
+  LOG(ERROR) << "XXXZZZ SnapController::OnInvokeSnapResult"
+             << " has_result=" << result.has_value()
+             << (error ? " error=" + *error : "");
+  if (cb_index >= pending_callbacks_.size() || !pending_callbacks_[cb_index]) {
+    return;  // Already failed by OnSnapBridgeDisconnected.
+  }
+  std::move(pending_callbacks_[cb_index]).Run(std::move(result), error);
 }
 
 }  // namespace brave_wallet
