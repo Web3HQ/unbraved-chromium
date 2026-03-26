@@ -29,6 +29,7 @@
 #include "brave/components/brave_wallet/browser/brave_wallet_service.h"
 #include "brave/components/brave_wallet/browser/json_rpc_service.h"
 #include "brave/components/brave_wallet/browser/keyring_service.h"
+#include "brave/components/brave_wallet/browser/meld_integration_service.h"
 #include "brave/components/brave_wallet/browser/simulation_service.h"
 #include "brave/components/brave_wallet/browser/swap_service.h"
 #include "brave/components/brave_wallet/browser/tx_service.h"
@@ -216,16 +217,30 @@ void WalletPanelUI::CreatePanelHandler(
     wallet_service->Bind(std::move(brave_wallet_p3a_receiver));
   }
 
-  brave_wallet::SwapServiceFactory::BindForContext(
-      profile, std::move(swap_service_receiver));
-  brave_wallet::SimulationServiceFactory::BindForContext(
-      profile, std::move(simulation_service_receiver));
-  brave_wallet::AssetRatioServiceFactory::BindForContext(
-      profile, std::move(asset_ratio_service_receiver));
-  brave_wallet::MeldIntegrationServiceFactory::BindForContext(
-      profile, std::move(meld_integration_service));
-  brave_wallet::BraveWalletIpfsServiceFactory::BindForContext(
-      profile, std::move(brave_wallet_ipfs_service_receiver));
+  if (auto* service =
+          brave_wallet::SwapServiceFactory::GetServiceForContext(profile)) {
+    service->Bind(std::move(swap_service_receiver));
+  }
+  if (auto* service =
+          brave_wallet::SimulationServiceFactory::GetServiceForContext(
+              profile)) {
+    service->Bind(std::move(simulation_service_receiver));
+  }
+  if (auto* service =
+          brave_wallet::AssetRatioServiceFactory::GetServiceForContext(
+              profile)) {
+    service->Bind(std::move(asset_ratio_service_receiver));
+  }
+  if (auto* service =
+          brave_wallet::MeldIntegrationServiceFactory::GetServiceForContext(
+              profile)) {
+    service->Bind(std::move(meld_integration_service));
+  }
+  if (auto* service =
+          brave_wallet::BraveWalletIpfsServiceFactory::GetServiceForContext(
+              profile)) {
+    service->Bind(std::move(brave_wallet_ipfs_service_receiver));
+  }
 
   auto* blockchain_registry = brave_wallet::BlockchainRegistry::GetInstance();
   if (blockchain_registry) {
@@ -238,7 +253,7 @@ WalletPanelUIConfig::WalletPanelUIConfig()
 
 bool WalletPanelUIConfig::IsWebUIEnabled(
     content::BrowserContext* browser_context) {
-  return brave_wallet::IsAllowedForContext(browser_context);
+  return brave_wallet::IsBraveWalletServiceAvailable(browser_context);
 }
 
 bool WalletPanelUIConfig::ShouldAutoResizeHost() {

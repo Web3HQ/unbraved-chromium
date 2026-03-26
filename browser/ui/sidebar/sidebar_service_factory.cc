@@ -8,6 +8,8 @@
 #include <memory>
 
 #include "base/no_destructor.h"
+#include "brave/browser/brave_wallet/brave_wallet_context_utils.h"
+#include "brave/browser/brave_wallet/brave_wallet_service_factory.h"
 #include "brave/browser/ui/sidebar/sidebar_utils.h"
 #include "brave/components/sidebar/browser/pref_names.h"
 #include "brave/components/sidebar/browser/sidebar_service.h"
@@ -39,6 +41,8 @@ SidebarServiceFactory::SidebarServiceFactory()
     : BrowserContextKeyedServiceFactory(
           "SidebarService",
           BrowserContextDependencyManager::GetInstance()) {
+  DependsOn(brave_wallet::BraveWalletServiceFactory::GetInstance());
+
   // Early return if the preference is already set or not existed(in test).
   if (!g_browser_process || !g_browser_process->local_state()) {
     return;
@@ -85,6 +89,15 @@ SidebarServiceFactory::GetBuiltInItemTypesForProfile(Profile* profile) const {
       }
       continue;
     }
+#if BUILDFLAG(ENABLE_BRAVE_WALLET)
+    if (type == SidebarItem::BuiltInItemType::kWallet) {
+      if (brave_wallet::IsWalletServiceAvailableForBrowserContext(profile)) {
+        types.push_back(type);
+      }
+
+      continue;
+    }
+#endif
 
     types.push_back(type);
   }

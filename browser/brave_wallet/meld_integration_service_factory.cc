@@ -6,7 +6,6 @@
 #include "brave/browser/brave_wallet/meld_integration_service_factory.h"
 
 #include <memory>
-#include <utility>
 
 #include "brave/browser/brave_wallet/brave_wallet_context_utils.h"
 #include "brave/components/brave_wallet/browser/meld_integration_service.h"
@@ -24,36 +23,10 @@ MeldIntegrationServiceFactory* MeldIntegrationServiceFactory::GetInstance() {
 }
 
 // static
-mojo::PendingRemote<mojom::MeldIntegrationService>
-MeldIntegrationServiceFactory::GetForContext(content::BrowserContext* context) {
-  if (!IsAllowedForContext(context)) {
-    return mojo::PendingRemote<mojom::MeldIntegrationService>();
-  }
-
-  return static_cast<MeldIntegrationService*>(
-             GetInstance()->GetServiceForBrowserContext(context, true))
-      ->MakeRemote();
-}
-
-// static
 MeldIntegrationService* MeldIntegrationServiceFactory::GetServiceForContext(
     content::BrowserContext* context) {
-  if (!IsAllowedForContext(context)) {
-    return nullptr;
-  }
   return static_cast<MeldIntegrationService*>(
       GetInstance()->GetServiceForBrowserContext(context, true));
-}
-
-// static
-void MeldIntegrationServiceFactory::BindForContext(
-    content::BrowserContext* context,
-    mojo::PendingReceiver<mojom::MeldIntegrationService> receiver) {
-  auto* meld_integration_service =
-      MeldIntegrationServiceFactory::GetServiceForContext(context);
-  if (meld_integration_service) {
-    meld_integration_service->Bind(std::move(receiver));
-  }
 }
 
 MeldIntegrationServiceFactory::MeldIntegrationServiceFactory()
@@ -66,6 +39,10 @@ MeldIntegrationServiceFactory::~MeldIntegrationServiceFactory() = default;
 std::unique_ptr<KeyedService>
 MeldIntegrationServiceFactory::BuildServiceInstanceForBrowserContext(
     content::BrowserContext* context) const {
+  if (!CanBuildWalletServiceInstanceForBrowserContext(context)) {
+    return nullptr;
+  }
+
   return std::make_unique<MeldIntegrationService>(
       context->GetDefaultStoragePartition()
           ->GetURLLoaderFactoryForBrowserProcess());
@@ -73,7 +50,7 @@ MeldIntegrationServiceFactory::BuildServiceInstanceForBrowserContext(
 
 content::BrowserContext* MeldIntegrationServiceFactory::GetBrowserContextToUse(
     content::BrowserContext* context) const {
-  return GetBrowserContextRedirectedInIncognito(context);
+  return context;
 }
 
 }  // namespace brave_wallet

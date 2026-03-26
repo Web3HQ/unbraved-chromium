@@ -48,12 +48,6 @@ namespace {
 
 constexpr size_t kCardanoScriptHashSize = 28u;
 
-bool IsDisabledByPolicy(PrefService* prefs) {
-  DCHECK(prefs);
-  return prefs->IsManagedPreference(kBraveWalletDisabledByPolicy) &&
-         prefs->GetBoolean(kBraveWalletDisabledByPolicy);
-}
-
 constexpr const char kEnsRegistryContractAddress[] =
     "0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e";
 
@@ -206,10 +200,6 @@ bool EncodeStringArrayInternal(base::span<const StringType> input,
 }
 
 }  // namespace
-
-bool IsAllowed(PrefService* prefs) {
-  return !IsDisabledByPolicy(prefs);
-}
 
 bool IsEndpointUsingBraveWalletProxy(const GURL& url) {
   return url.DomainIs("wallet.brave.com") ||

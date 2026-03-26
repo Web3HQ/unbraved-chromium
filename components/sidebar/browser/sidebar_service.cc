@@ -656,16 +656,13 @@ SidebarItem SidebarService::GetBuiltInItemForType(
 #endif  // BUILDFLAG(ENABLE_BRAVE_TALK)
     case SidebarItem::BuiltInItemType::kWallet: {
 #if BUILDFLAG(ENABLE_BRAVE_WALLET)
-      if (brave_wallet::IsAllowed(prefs_)) {
-        return SidebarItem::Create(
-            GURL("chrome://wallet/"),
-            l10n_util::GetStringUTF16(IDS_SIDEBAR_WALLET_ITEM_TITLE),
-            SidebarItem::Type::kTypeBuiltIn,
-            SidebarItem::BuiltInItemType::kWallet,
-            /* open_in_panel = */ false);
-      }
+      return SidebarItem::Create(
+          GURL("chrome://wallet/"),
+          l10n_util::GetStringUTF16(IDS_SIDEBAR_WALLET_ITEM_TITLE),
+          SidebarItem::Type::kTypeBuiltIn,
+          SidebarItem::BuiltInItemType::kWallet,
+          /* open_in_panel = */ false);
 #endif  // BUILDFLAG(ENABLE_BRAVE_WALLET)
-      return SidebarItem();
     }
     case SidebarItem::BuiltInItemType::kBookmarks:
       return SidebarItem::Create(

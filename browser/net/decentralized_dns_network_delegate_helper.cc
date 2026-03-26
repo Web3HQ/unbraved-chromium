@@ -43,13 +43,6 @@ int OnBeforeURLRequest_DecentralizedDnsPreRedirectWork(
     return net::OK;
   }
 
-  // Check if Brave Wallet is disabled by policy - if so, disable decentralized
-  // DNS
-  auto* prefs = user_prefs::UserPrefs::Get(ctx->browser_context());
-  if (!brave_wallet::IsAllowed(prefs)) {
-    return net::OK;
-  }
-
   auto* brave_wallet_service =
       brave_wallet::BraveWalletServiceFactory::GetServiceForContext(
           ctx->browser_context());

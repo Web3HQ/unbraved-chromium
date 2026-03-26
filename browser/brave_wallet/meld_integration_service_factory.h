@@ -9,7 +9,6 @@
 #include <memory>
 
 #include "base/no_destructor.h"
-#include "brave/components/brave_wallet/common/brave_wallet.mojom.h"
 #include "brave/components/brave_wallet/common/buildflags/buildflags.h"
 #include "components/keyed_service/content/browser_context_keyed_service_factory.h"
 
@@ -18,16 +17,13 @@ namespace brave_wallet {
 
 class MeldIntegrationService;
 
+// TODO(https://github.com/brave/brave-browser/issues/53971): Remove this keyed
+// service.
 class MeldIntegrationServiceFactory : public BrowserContextKeyedServiceFactory {
  public:
-  static mojo::PendingRemote<mojom::MeldIntegrationService> GetForContext(
-      content::BrowserContext* context);
   static MeldIntegrationService* GetServiceForContext(
       content::BrowserContext* context);
   static MeldIntegrationServiceFactory* GetInstance();
-  static void BindForContext(
-      content::BrowserContext* context,
-      mojo::PendingReceiver<mojom::MeldIntegrationService> receiver);
 
  private:
   friend base::NoDestructor<MeldIntegrationServiceFactory>;

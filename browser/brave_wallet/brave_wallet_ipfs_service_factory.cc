@@ -6,11 +6,9 @@
 #include "brave/browser/brave_wallet/brave_wallet_ipfs_service_factory.h"
 
 #include <memory>
-#include <utility>
 
 #include "base/no_destructor.h"
 #include "brave/browser/brave_wallet/brave_wallet_context_utils.h"
-#include "chrome/browser/browser_process.h"
 #include "chrome/browser/profiles/incognito_helpers.h"
 #include "components/keyed_service/content/browser_context_dependency_manager.h"
 #include "components/user_prefs/user_prefs.h"
@@ -25,36 +23,10 @@ BraveWalletIpfsServiceFactory* BraveWalletIpfsServiceFactory::GetInstance() {
 }
 
 // static
-mojo::PendingRemote<mojom::IpfsService>
-BraveWalletIpfsServiceFactory::GetForContext(content::BrowserContext* context) {
-  if (!IsAllowedForContext(context)) {
-    return mojo::PendingRemote<mojom::IpfsService>();
-  }
-
-  return static_cast<BraveWalletIpfsService*>(
-             GetInstance()->GetServiceForBrowserContext(context, true))
-      ->MakeRemote();
-}
-
-// static
 BraveWalletIpfsService* BraveWalletIpfsServiceFactory::GetServiceForContext(
     content::BrowserContext* context) {
-  if (!IsAllowedForContext(context)) {
-    return nullptr;
-  }
   return static_cast<BraveWalletIpfsService*>(
       GetInstance()->GetServiceForBrowserContext(context, true));
-}
-
-// static
-void BraveWalletIpfsServiceFactory::BindForContext(
-    content::BrowserContext* context,
-    mojo::PendingReceiver<mojom::IpfsService> receiver) {
-  auto* ipfs_service =
-      BraveWalletIpfsServiceFactory::GetServiceForContext(context);
-  if (ipfs_service) {
-    ipfs_service->Bind(std::move(receiver));
-  }
 }
 
 BraveWalletIpfsServiceFactory::BraveWalletIpfsServiceFactory()
@@ -67,13 +39,17 @@ BraveWalletIpfsServiceFactory::~BraveWalletIpfsServiceFactory() = default;
 std::unique_ptr<KeyedService>
 BraveWalletIpfsServiceFactory::BuildServiceInstanceForBrowserContext(
     content::BrowserContext* context) const {
+  if (!CanBuildWalletServiceInstanceForBrowserContext(context)) {
+    return nullptr;
+  }
+
   return std::make_unique<BraveWalletIpfsService>(
       user_prefs::UserPrefs::Get(context));
 }
 
 content::BrowserContext* BraveWalletIpfsServiceFactory::GetBrowserContextToUse(
     content::BrowserContext* context) const {
-  return GetBrowserContextRedirectedInIncognito(context);
+  return context;
 }
 
 }  // namespace brave_wallet

@@ -72,7 +72,6 @@
 #include "brave/browser/ui/views/toolbar/wallet_button.h"
 #include "brave/components/brave_wallet/browser/brave_wallet_utils.h"
 #include "brave/components/brave_wallet/browser/pref_names.h"
-#include "brave/components/brave_wallet/common/common_utils.h"
 #endif
 
 namespace {
@@ -623,7 +622,7 @@ void BraveToolbarView::UpdateAIChatButtonVisibility() {
 #if BUILDFLAG(ENABLE_BRAVE_WALLET)
 void BraveToolbarView::UpdateWalletButtonVisibility() {
   Profile* profile = browser()->profile();
-  if (brave_wallet::IsAllowedForContext(profile)) {
+  if (brave_wallet::IsBraveWalletServiceAvailable(profile)) {
     // Hide all if user wants to hide.
     if (!show_wallet_button_.GetValue()) {
       wallet_->SetVisible(false);

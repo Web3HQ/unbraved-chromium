@@ -8,6 +8,8 @@
 #include <utility>
 
 #include "base/containers/fixed_flat_set.h"
+#include "base/functional/callback_helpers.h"
+#include "brave/browser/brave_wallet/brave_wallet_service_factory.h"
 #include "brave/components/ai_chat/core/common/buildflags/buildflags.h"
 #include "brave/components/brave_news/common/buildflags/buildflags.h"
 #include "brave/components/brave_rewards/core/buildflags/buildflags.h"
@@ -315,8 +317,8 @@ TEST_F(ListActionModifiersUnitTest,
 TEST_F(ListActionModifiersUnitTest,
        ApplyBraveSpecificModifications_WalletShouldNotBeAddedWhenDisabled) {
   // Wallet should be available by default.
-  ASSERT_TRUE(
-      brave_wallet::IsAllowedForContext(web_contents_->GetBrowserContext()));
+  ASSERT_TRUE(brave_wallet::IsBraveWalletServiceAvailable(
+      web_contents_->GetBrowserContext()));
   auto modified_actions = customize_chrome::ApplyBraveSpecificModifications(
       web_contents_.get(), GetBasicActions());
   auto wallet_action_it =
@@ -325,10 +327,14 @@ TEST_F(ListActionModifiersUnitTest,
   ASSERT_NE(wallet_action_it, modified_actions.end());
 
   // Disable Wallet in prefs.
+
+  brave_wallet::BraveWalletServiceFactory::GetInstance()->SetTestingFactory(
+      web_contents_->GetBrowserContext(), base::NullCallback());
   prefs()->SetManagedPref(brave_wallet::kBraveWalletDisabledByPolicy,
                           base::Value(true));
-  ASSERT_FALSE(
-      brave_wallet::IsAllowedForContext(web_contents_->GetBrowserContext()));
+
+  ASSERT_FALSE(brave_wallet::IsBraveWalletServiceAvailable(
+      web_contents_->GetBrowserContext()));
 
   modified_actions = customize_chrome::ApplyBraveSpecificModifications(
       web_contents_.get(), GetBasicActions());
@@ -404,8 +410,8 @@ TEST_F(ListActionModifiersUnitTest,
   ASSERT_TRUE(ai_chat::IsAIChatEnabled(prefs()));
 #endif  // BUILDFLAG(ENABLE_AI_CHAT)
 #if BUILDFLAG(ENABLE_BRAVE_WALLET)
-  ASSERT_TRUE(
-      brave_wallet::IsAllowedForContext(web_contents_->GetBrowserContext()));
+  ASSERT_TRUE(brave_wallet::IsBraveWalletServiceAvailable(
+      web_contents_->GetBrowserContext()));
 #endif
 #if BUILDFLAG(ENABLE_BRAVE_REWARDS)
   ASSERT_TRUE(brave_rewards::IsSupportedForProfile(

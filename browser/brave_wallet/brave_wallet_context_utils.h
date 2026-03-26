@@ -16,7 +16,12 @@ class BrowserContext;
 
 namespace brave_wallet {
 
-bool IsAllowedForContext(content::BrowserContext* context);
+// Common implementation required for `BuildServiceInstanceForBrowserContext`
+// methods for wallet related keyed services.
+bool CanBuildWalletServiceInstanceForBrowserContext(
+    content::BrowserContext* context);
+
+bool IsBraveWalletServiceAvailable(content::BrowserContext* context);
 
 }  // namespace brave_wallet
 

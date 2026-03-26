@@ -6,6 +6,7 @@
 #include "brave/browser/brave_wallet/swap_service_factory.h"
 
 #include "base/android/jni_android.h"
+#include "brave/components/brave_wallet/browser/swap_service.h"
 #include "chrome/android/chrome_jni_headers/SwapServiceFactory_jni.h"
 #include "chrome/browser/profiles/profile.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
@@ -16,10 +17,13 @@ static jlong JNI_SwapServiceFactory_GetInterfaceToSwapService(
     JNIEnv* env,
     const base::android::JavaRef<jobject>& profile_android) {
   auto* profile = Profile::FromJavaObject(profile_android);
-  auto pending =
-      brave_wallet::SwapServiceFactory::GetInstance()->GetForContext(profile);
+  if (auto* service =
+          brave_wallet::SwapServiceFactory::GetServiceForContext(profile)) {
+    auto pending = service->MakeRemote();
+    return pending.PassPipe().release().value();
+  }
 
-  return static_cast<jlong>(pending.PassPipe().release().value());
+  return mojo::kInvalidHandleValue;
 }
 
 }  // namespace android

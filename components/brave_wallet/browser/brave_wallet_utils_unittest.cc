@@ -1013,32 +1013,4 @@ class BraveWalletPolicyTest : public testing::Test {
   TestingPrefServiceSimple prefs_;
 };
 
-TEST_F(BraveWalletPolicyTest, PolicyDisablesWallet) {
-  // Set policy to disable Brave Wallet
-  BlockWalletByPolicy(true);
-
-  // Test that the policy preference is set correctly
-  EXPECT_TRUE(prefs_.GetBoolean(kBraveWalletDisabledByPolicy));
-
-  // Policy should be enforced
-  EXPECT_FALSE(IsAllowed(&prefs_));
-}
-
-TEST_F(BraveWalletPolicyTest, PolicyEnablesWallet) {
-  // Set policy to enable Brave Wallet
-  BlockWalletByPolicy(false);
-
-  // Test that the policy preference is set correctly
-  EXPECT_FALSE(prefs_.GetBoolean(kBraveWalletDisabledByPolicy));
-
-  // Test that IsAllowed returns true when policy enables it
-  // This should be true on all platforms
-  EXPECT_TRUE(IsAllowed(&prefs_));
-}
-
-TEST_F(BraveWalletPolicyTest, DefaultBehavior) {
-  // Test that IsAllowed returns true when no policy is set
-  EXPECT_TRUE(IsAllowed(&prefs_));
-}
-
 }  // namespace brave_wallet

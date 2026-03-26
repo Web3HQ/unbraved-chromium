@@ -15,6 +15,7 @@
 #include "base/notreached.h"
 #include "base/types/to_address.h"
 #include "brave/app/brave_command_ids.h"
+#include "brave/browser/brave_wallet/brave_wallet_context_utils.h"
 #include "brave/browser/email_aliases/email_aliases_service_factory.h"
 #include "brave/browser/profiles/profile_util.h"
 #include "brave/browser/ui/brave_pages.h"
@@ -238,7 +239,7 @@ void BraveBrowserCommandController::InitBraveCommandState() {
       UpdateCommandForBraveRewards();
     }
 #if BUILDFLAG(ENABLE_BRAVE_WALLET)
-    if (brave_wallet::IsAllowed(browser_->profile()->GetPrefs())) {
+    if (brave_wallet::IsBraveWalletServiceAvailable(browser_->profile())) {
       UpdateCommandForBraveWallet();
     }
 #endif

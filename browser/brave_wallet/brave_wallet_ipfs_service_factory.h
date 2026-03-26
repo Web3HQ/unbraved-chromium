@@ -9,13 +9,10 @@
 #include <memory>
 
 #include "brave/components/brave_wallet/browser/brave_wallet_ipfs_service.h"
-#include "brave/components/brave_wallet/common/brave_wallet.mojom.h"
 #include "brave/components/brave_wallet/common/buildflags/buildflags.h"
 #include "components/keyed_service/content/browser_context_keyed_service_factory.h"
 #include "components/keyed_service/core/keyed_service.h"
 #include "content/public/browser/browser_context.h"
-#include "mojo/public/cpp/bindings/pending_receiver.h"
-#include "mojo/public/cpp/bindings/pending_remote.h"
 
 static_assert(BUILDFLAG(ENABLE_BRAVE_WALLET));
 namespace base {
@@ -25,20 +22,17 @@ class NoDestructor;
 
 namespace brave_wallet {
 
+// TODO(https://github.com/brave/brave-browser/issues/53971): Remove this keyed
+// service.
 class BraveWalletIpfsServiceFactory : public BrowserContextKeyedServiceFactory {
  public:
   BraveWalletIpfsServiceFactory(const BraveWalletIpfsServiceFactory&) = delete;
   BraveWalletIpfsServiceFactory& operator=(
       const BraveWalletIpfsServiceFactory&) = delete;
 
-  static mojo::PendingRemote<mojom::IpfsService> GetForContext(
-      content::BrowserContext* context);
   static BraveWalletIpfsService* GetServiceForContext(
       content::BrowserContext* context);
   static BraveWalletIpfsServiceFactory* GetInstance();
-  static void BindForContext(
-      content::BrowserContext* context,
-      mojo::PendingReceiver<mojom::IpfsService> receiver);
 
  private:
   friend base::NoDestructor<BraveWalletIpfsServiceFactory>;

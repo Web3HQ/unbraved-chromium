@@ -6,7 +6,6 @@
 #include "brave/browser/brave_wallet/swap_service_factory.h"
 
 #include <memory>
-#include <utility>
 
 #include "base/no_destructor.h"
 #include "brave/browser/brave_wallet/brave_wallet_context_utils.h"
@@ -14,7 +13,6 @@
 #include "chrome/browser/profiles/incognito_helpers.h"
 #include "components/keyed_service/content/browser_context_dependency_manager.h"
 #include "content/public/browser/storage_partition.h"
-#include "services/network/public/cpp/shared_url_loader_factory.h"
 
 namespace brave_wallet {
 
@@ -25,35 +23,10 @@ SwapServiceFactory* SwapServiceFactory::GetInstance() {
 }
 
 // static
-mojo::PendingRemote<mojom::SwapService> SwapServiceFactory::GetForContext(
-    content::BrowserContext* context) {
-  if (!IsAllowedForContext(context)) {
-    return mojo::PendingRemote<mojom::SwapService>();
-  }
-
-  return static_cast<SwapService*>(
-             GetInstance()->GetServiceForBrowserContext(context, true))
-      ->MakeRemote();
-}
-
-// static
 SwapService* SwapServiceFactory::GetServiceForContext(
     content::BrowserContext* context) {
-  if (!IsAllowedForContext(context)) {
-    return nullptr;
-  }
   return static_cast<SwapService*>(
       GetInstance()->GetServiceForBrowserContext(context, true));
-}
-
-// static
-void SwapServiceFactory::BindForContext(
-    content::BrowserContext* context,
-    mojo::PendingReceiver<mojom::SwapService> receiver) {
-  auto* swap_service = SwapServiceFactory::GetServiceForContext(context);
-  if (swap_service) {
-    swap_service->Bind(std::move(receiver));
-  }
 }
 
 SwapServiceFactory::SwapServiceFactory()
@@ -66,6 +39,10 @@ SwapServiceFactory::~SwapServiceFactory() = default;
 std::unique_ptr<KeyedService>
 SwapServiceFactory::BuildServiceInstanceForBrowserContext(
     content::BrowserContext* context) const {
+  if (!CanBuildWalletServiceInstanceForBrowserContext(context)) {
+    return nullptr;
+  }
+
   return std::make_unique<SwapService>(
       context->GetDefaultStoragePartition()
           ->GetURLLoaderFactoryForBrowserProcess());
@@ -73,7 +50,7 @@ SwapServiceFactory::BuildServiceInstanceForBrowserContext(
 
 content::BrowserContext* SwapServiceFactory::GetBrowserContextToUse(
     content::BrowserContext* context) const {
-  return GetBrowserContextRedirectedInIncognito(context);
+  return context;
 }
 
 }  // namespace brave_wallet

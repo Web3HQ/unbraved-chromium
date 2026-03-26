@@ -8,13 +8,10 @@
 
 #include <memory>
 
-#include "brave/components/brave_wallet/common/brave_wallet.mojom.h"
 #include "brave/components/brave_wallet/common/buildflags/buildflags.h"
 #include "components/keyed_service/content/browser_context_keyed_service_factory.h"
 #include "components/keyed_service/core/keyed_service.h"
 #include "content/public/browser/browser_context.h"
-#include "mojo/public/cpp/bindings/pending_receiver.h"
-#include "mojo/public/cpp/bindings/pending_remote.h"
 
 static_assert(BUILDFLAG(ENABLE_BRAVE_WALLET));
 namespace base {
@@ -26,16 +23,13 @@ namespace brave_wallet {
 
 class SimulationService;
 
+// TODO(https://github.com/brave/brave-browser/issues/53971): Remove this keyed
+// service.
 class SimulationServiceFactory : public BrowserContextKeyedServiceFactory {
  public:
-  static mojo::PendingRemote<mojom::SimulationService> GetForContext(
-      content::BrowserContext* context);
   static SimulationService* GetServiceForContext(
       content::BrowserContext* context);
   static SimulationServiceFactory* GetInstance();
-  static void BindForContext(
-      content::BrowserContext* context,
-      mojo::PendingReceiver<mojom::SimulationService> receiver);
 
  private:
   friend base::NoDestructor<SimulationServiceFactory>;

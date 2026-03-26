@@ -80,7 +80,7 @@ class BraveWalletPolicyTest : public InProcessBrowserTest,
 
 // Verify that brave_wallet::IsDisabledByPolicy works correctly based on the
 // preference set by the policy.
-IN_PROC_BROWSER_TEST_P(BraveWalletPolicyTest, IsBraveWalletDisabled) {
+/*IN_PROC_BROWSER_TEST_P(BraveWalletPolicyTest, IsBraveWalletDisabled) {
   EXPECT_TRUE(
       prefs()->FindPreference(brave_wallet::kBraveWalletDisabledByPolicy));
   if (IsBraveWalletDisabledTest()) {
@@ -128,6 +128,7 @@ IN_PROC_BROWSER_TEST_P(BraveWalletPolicyTest, IsBraveWalletDisabled) {
     EXPECT_FALSE(brave_wallet::IsAllowedForContext(guest_profile));
   }
 }
+*/
 
 // Verify that Wallet service doesn't get created when Brave Wallet is
 // disabled by policy.

@@ -18,9 +18,12 @@
 #include "brave/browser/brave_wallet/swap_service_factory.h"
 #include "brave/browser/ui/webui/brave_wallet/wallet_common_ui.h"
 #include "brave/browser/ui/webui/brave_webui_source.h"
+#include "brave/components/brave_wallet/browser/asset_ratio_service.h"
 #include "brave/components/brave_wallet/browser/blockchain_registry.h"
 #include "brave/components/brave_wallet/browser/brave_wallet_constants.h"
 #include "brave/components/brave_wallet/browser/brave_wallet_service.h"
+#include "brave/components/brave_wallet/browser/meld_integration_service.h"
+#include "brave/components/brave_wallet/browser/swap_service.h"
 #include "brave/components/brave_wallet/common/common_utils.h"
 #include "brave/components/brave_wallet_page/resources/grit/brave_wallet_deposit_page_generated_map.h"
 #include "brave/components/brave_wallet_page/resources/grit/brave_wallet_fund_wallet_page_generated_map.h"
@@ -163,14 +166,25 @@ void AndroidWalletPageUI::CreatePageHandler(
     wallet_service->Bind(std::move(brave_wallet_p3a_receiver));
   }
 
-  brave_wallet::SwapServiceFactory::BindForContext(
-      profile, std::move(swap_service_receiver));
-  brave_wallet::AssetRatioServiceFactory::BindForContext(
-      profile, std::move(asset_ratio_service_receiver));
-  brave_wallet::MeldIntegrationServiceFactory::BindForContext(
-      profile, std::move(meld_integration_service));
-  brave_wallet::BraveWalletIpfsServiceFactory::BindForContext(
-      profile, std::move(ipfs_service_receiver));
+  if (auto* service =
+          brave_wallet::SwapServiceFactory::GetServiceForContext(profile)) {
+    service->Bind(std::move(swap_service_receiver));
+  }
+  if (auto* service =
+          brave_wallet::AssetRatioServiceFactory::GetServiceForContext(
+              profile)) {
+    service->Bind(std::move(asset_ratio_service_receiver));
+  }
+  if (auto* service =
+          brave_wallet::MeldIntegrationServiceFactory::GetServiceForContext(
+              profile)) {
+    service->Bind(std::move(meld_integration_service));
+  }
+  if (auto* service =
+          brave_wallet::BraveWalletIpfsServiceFactory::GetServiceForContext(
+              profile)) {
+    service->Bind(std::move(ipfs_service_receiver));
+  }
 
   auto* blockchain_registry = brave_wallet::BlockchainRegistry::GetInstance();
   if (blockchain_registry) {
