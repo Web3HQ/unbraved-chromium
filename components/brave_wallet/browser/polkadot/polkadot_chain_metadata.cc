@@ -36,6 +36,12 @@ std::optional<PolkadotChainMetadata> PolkadotChainMetadata::FromBytes(
                     parsed->balances_pallet_index(),
                     parsed->transaction_payment_pallet_index(),
                     parsed->transfer_allow_death_call_index(),
+                    parsed->transfer_keep_alive_call_index(),
+                    parsed->transfer_all_call_index(),
+                    parsed->transaction_fee_paid_variant_index(),
+                    parsed->extrinsic_success_variant_index(),
+                    parsed->extrinsic_failed_variant_index(),
+                    parsed->phase_apply_extrinsic_variant_index(),
                     parsed->ss58_prefix(), parsed->spec_version());
 }
 
@@ -45,6 +51,12 @@ PolkadotChainMetadata PolkadotChainMetadata::FromFields(
     uint8_t balances_pallet_index,
     uint8_t transaction_payment_pallet_index,
     uint8_t transfer_allow_death_call_index,
+    uint8_t transfer_keep_alive_call_index,
+    uint8_t transfer_all_call_index,
+    uint8_t transaction_fee_paid_variant_index,
+    uint8_t extrinsic_success_variant_index,
+    uint8_t extrinsic_failed_variant_index,
+    uint8_t phase_apply_extrinsic_variant_index,
     uint16_t ss58_prefix,
     uint32_t spec_version) {
   CxxPolkadotChainMetadata metadata;
@@ -52,6 +64,14 @@ PolkadotChainMetadata PolkadotChainMetadata::FromFields(
   metadata.balances_pallet_index = balances_pallet_index;
   metadata.transaction_payment_pallet_index = transaction_payment_pallet_index;
   metadata.transfer_allow_death_call_index = transfer_allow_death_call_index;
+  metadata.transfer_keep_alive_call_index = transfer_keep_alive_call_index;
+  metadata.transfer_all_call_index = transfer_all_call_index;
+  metadata.transaction_fee_paid_variant_index =
+      transaction_fee_paid_variant_index;
+  metadata.extrinsic_success_variant_index = extrinsic_success_variant_index;
+  metadata.extrinsic_failed_variant_index = extrinsic_failed_variant_index;
+  metadata.phase_apply_extrinsic_variant_index =
+      phase_apply_extrinsic_variant_index;
   metadata.ss58_prefix = ss58_prefix;
   metadata.spec_version = spec_version;
   return PolkadotChainMetadata(metadata);
@@ -70,6 +90,12 @@ std::optional<PolkadotChainMetadata> PolkadotChainMetadata::FromChainName(
                       /*balances_pallet_index=*/4,
                       /*transaction_payment_pallet_index=*/0x1a,
                       /*transfer_allow_death_call_index=*/0,
+                      /*transfer_keep_alive_call_index=*/3,
+                      /*transfer_all_call_index=*/4,
+                      /*transaction_fee_paid_variant_index=*/0,
+                      /*extrinsic_success_variant_index=*/0,
+                      /*extrinsic_failed_variant_index=*/1,
+                      /*phase_apply_extrinsic_variant_index=*/0,
                       /*ss58_prefix=*/42, kUnknownSpecVersion);
   }
 
@@ -79,6 +105,12 @@ std::optional<PolkadotChainMetadata> PolkadotChainMetadata::FromChainName(
                       /*balances_pallet_index=*/10,
                       /*transaction_payment_pallet_index=*/0x0b,
                       /*transfer_allow_death_call_index=*/0,
+                      /*transfer_keep_alive_call_index=*/3,
+                      /*transfer_all_call_index=*/4,
+                      /*transaction_fee_paid_variant_index=*/0,
+                      /*extrinsic_success_variant_index=*/0,
+                      /*extrinsic_failed_variant_index=*/1,
+                      /*phase_apply_extrinsic_variant_index=*/0,
                       /*ss58_prefix=*/42, kUnknownSpecVersion);
   }
 
@@ -88,6 +120,12 @@ std::optional<PolkadotChainMetadata> PolkadotChainMetadata::FromChainName(
                       /*balances_pallet_index=*/5,
                       /*transaction_payment_pallet_index=*/0x20,
                       /*transfer_allow_death_call_index=*/0,
+                      /*transfer_keep_alive_call_index=*/3,
+                      /*transfer_all_call_index=*/4,
+                      /*transaction_fee_paid_variant_index=*/0,
+                      /*extrinsic_success_variant_index=*/0,
+                      /*extrinsic_failed_variant_index=*/1,
+                      /*phase_apply_extrinsic_variant_index=*/0,
                       /*ss58_prefix=*/0, kUnknownSpecVersion);
   }
 
@@ -97,6 +135,12 @@ std::optional<PolkadotChainMetadata> PolkadotChainMetadata::FromChainName(
                       /*balances_pallet_index=*/10,
                       /*transaction_payment_pallet_index=*/0x0b,
                       /*transfer_allow_death_call_index=*/0,
+                      /*transfer_keep_alive_call_index=*/3,
+                      /*transfer_all_call_index=*/4,
+                      /*transaction_fee_paid_variant_index=*/0,
+                      /*extrinsic_success_variant_index=*/0,
+                      /*extrinsic_failed_variant_index=*/1,
+                      /*phase_apply_extrinsic_variant_index=*/0,
                       /*ss58_prefix=*/0, kUnknownSpecVersion);
   }
 
@@ -121,6 +165,30 @@ uint8_t PolkadotChainMetadata::GetTransactionPaymentPalletIndex() const {
 
 uint8_t PolkadotChainMetadata::GetTransferAllowDeathCallIndex() const {
   return chain_metadata_.transfer_allow_death_call_index;
+}
+
+uint8_t PolkadotChainMetadata::TransferKeepAliveCallIndex() const {
+  return chain_metadata_.transfer_keep_alive_call_index;
+}
+
+uint8_t PolkadotChainMetadata::TransferAllCallIndex() const {
+  return chain_metadata_.transfer_all_call_index;
+}
+
+uint8_t PolkadotChainMetadata::TransactionFeePaidVariantIndex() const {
+  return chain_metadata_.transaction_fee_paid_variant_index;
+}
+
+uint8_t PolkadotChainMetadata::ExtrinsicSuccessVariantIndex() const {
+  return chain_metadata_.extrinsic_success_variant_index;
+}
+
+uint8_t PolkadotChainMetadata::ExtrinsicFailedVariantIndex() const {
+  return chain_metadata_.extrinsic_failed_variant_index;
+}
+
+uint8_t PolkadotChainMetadata::PhaseApplyExtrinsicVariantIndex() const {
+  return chain_metadata_.phase_apply_extrinsic_variant_index;
 }
 
 uint16_t PolkadotChainMetadata::GetSs58Prefix() const {

@@ -14,6 +14,12 @@ struct CxxPolkadotChainMetadataFields {
     balances_pallet_index: u8,
     transaction_payment_pallet_index: u8,
     transfer_allow_death_call_index: u8,
+    transfer_keep_alive_call_index: u8,
+    transfer_all_call_index: u8,
+    transaction_fee_paid_variant_index: u8,
+    extrinsic_success_variant_index: u8,
+    extrinsic_failed_variant_index: u8,
+    phase_apply_extrinsic_variant_index: u8,
     ss58_prefix: u16,
     spec_version: u32,
 }
@@ -39,6 +45,12 @@ mod ffi {
         fn balances_pallet_index(self: &CxxPolkadotChainMetadataFields) -> u8;
         fn transaction_payment_pallet_index(self: &CxxPolkadotChainMetadataFields) -> u8;
         fn transfer_allow_death_call_index(self: &CxxPolkadotChainMetadataFields) -> u8;
+        fn transfer_keep_alive_call_index(self: &CxxPolkadotChainMetadataFields) -> u8;
+        fn transfer_all_call_index(self: &CxxPolkadotChainMetadataFields) -> u8;
+        fn transaction_fee_paid_variant_index(self: &CxxPolkadotChainMetadataFields) -> u8;
+        fn extrinsic_success_variant_index(self: &CxxPolkadotChainMetadataFields) -> u8;
+        fn extrinsic_failed_variant_index(self: &CxxPolkadotChainMetadataFields) -> u8;
+        fn phase_apply_extrinsic_variant_index(self: &CxxPolkadotChainMetadataFields) -> u8;
         fn ss58_prefix(self: &CxxPolkadotChainMetadataFields) -> u16;
         fn spec_version(self: &CxxPolkadotChainMetadataFields) -> u32;
     }
@@ -59,6 +71,30 @@ impl CxxPolkadotChainMetadataFields {
 
     fn transfer_allow_death_call_index(self: &CxxPolkadotChainMetadataFields) -> u8 {
         self.transfer_allow_death_call_index
+    }
+
+    fn transfer_keep_alive_call_index(self: &CxxPolkadotChainMetadataFields) -> u8 {
+        self.transfer_keep_alive_call_index
+    }
+
+    fn transfer_all_call_index(self: &CxxPolkadotChainMetadataFields) -> u8 {
+        self.transfer_all_call_index
+    }
+
+    fn transaction_fee_paid_variant_index(self: &CxxPolkadotChainMetadataFields) -> u8 {
+        self.transaction_fee_paid_variant_index
+    }
+
+    fn extrinsic_success_variant_index(self: &CxxPolkadotChainMetadataFields) -> u8 {
+        self.extrinsic_success_variant_index
+    }
+
+    fn extrinsic_failed_variant_index(self: &CxxPolkadotChainMetadataFields) -> u8 {
+        self.extrinsic_failed_variant_index
+    }
+
+    fn phase_apply_extrinsic_variant_index(self: &CxxPolkadotChainMetadataFields) -> u8 {
+        self.phase_apply_extrinsic_variant_index
     }
 
     fn ss58_prefix(self: &CxxPolkadotChainMetadataFields) -> u16 {
@@ -185,7 +221,8 @@ fn parse_type_def(input: &mut &[u8]) -> Result<Option<Vec<VariantInfo>>, Error> 
 
 fn parse_type(input: &mut &[u8]) -> Result<Option<Vec<VariantInfo>>, Error> {
     // path: Vec<String>
-    let _ = decode_vec(input, decode_scale::<String>)?;
+    let _path = decode_vec(input, decode_scale::<String>)?;
+
     // type params
     let _ = decode_vec(input, |input| {
         let _: String = decode_scale(input)?;
@@ -219,6 +256,7 @@ struct PalletInfo {
     name: String,
     index: u8,
     calls_type_id: Option<u32>,
+    events_type_id: Option<u32>,
     constants: Vec<(String, Vec<u8>)>,
 }
 
@@ -268,7 +306,7 @@ fn parse_pallet(input: &mut &[u8], has_pallet_docs: bool) -> Result<PalletInfo, 
     let calls_type_id = decode_option(input, decode_type_id)?;
 
     // event: Option<PalletEventMetadata { ty: u32 }>
-    let _event_ty = decode_option(input, decode_type_id)?;
+    let events_type_id = decode_option(input, decode_type_id)?;
 
     // constants: Vec<PalletConstantMetadata>
     let constants = decode_vec(input, |input| {
@@ -288,7 +326,7 @@ fn parse_pallet(input: &mut &[u8], has_pallet_docs: bool) -> Result<PalletInfo, 
         let _: Vec<String> = decode_vec(input, decode_scale::<String>)?;
     }
 
-    Ok(PalletInfo { name, index, calls_type_id, constants })
+    Ok(PalletInfo { name, index, calls_type_id, events_type_id, constants })
 }
 
 fn parse_pallets(input: &mut &[u8], has_pallet_docs: bool) -> Result<Vec<PalletInfo>, Error> {
@@ -342,6 +380,32 @@ fn decode_runtime_spec_version(raw: &[u8]) -> Option<u32> {
 
 const RUNTIME_METADATA_PREFIX_MAGIC: u32 = 0x6174_656d;
 
+fn get_pallet<'a>(
+    pallets: &'a Vec<PalletInfo>,
+    pallet_name: &'a str,
+) -> Result<&'a PalletInfo, Error> {
+    pallets.iter().find(|p| normalize_ident(&p.name) == pallet_name).ok_or(Error::InvalidMetadata)
+}
+
+fn get_variant_index<'a>(
+    portable_registry: &'a HashMap<u32, Vec<VariantInfo>>,
+    type_id: u32,
+    variant_name: &'a str,
+) -> Result<u8, Error> {
+    portable_registry
+        .get(&type_id)
+        .and_then(|variants| variants.iter().find(|v| normalize_ident(&v.name) == variant_name))
+        .map(|v| v.index)
+        .ok_or(Error::InvalidMetadata)
+}
+
+fn get_constant<'a>(
+    pallet: &'a PalletInfo,
+    constant_name: &'a str,
+) -> Option<&'a (String, Vec<u8>)> {
+    pallet.constants.iter().find(|(name, _)| normalize_ident(name) == constant_name)
+}
+
 /// Parses SCALE-encoded `state_getMetadata` bytes (RuntimeMetadataPrefixed).
 ///
 /// Structure expected by this parser:
@@ -382,55 +446,75 @@ fn parse_chain_metadata_fields(bytes: &[u8]) -> Result<CxxPolkadotChainMetadata,
 
     let portable_registry = parse_portable_registry(&mut input)?;
 
+    let mut phase_apply_extrinsic_variant_index = None;
+
+    for (_idx, variants) in &portable_registry {
+        for v in variants {
+            if v.name == "ApplyExtrinsic" {
+                phase_apply_extrinsic_variant_index = Some(v.index);
+            }
+        }
+    }
+
+    let Some(phase_apply_extrinsic_variant_index) = phase_apply_extrinsic_variant_index else {
+        return Err(Error::InvalidMetadata);
+    };
+
     let pallets = parse_pallets(&mut input, /* has_pallet_docs= */ version >= 15)?;
 
-    let balances_pallet = pallets
-        .iter()
-        .find(|p| normalize_ident(&p.name) == "balances")
-        .ok_or(Error::InvalidMetadata)?;
+    let balances_pallet = get_pallet(&pallets, "balances")?;
     let balances_pallet_index = balances_pallet.index;
     let calls_type_id = balances_pallet.calls_type_id.ok_or(Error::InvalidMetadata)?;
 
-    let transfer_allow_death_call_index = portable_registry
-        .get(&calls_type_id)
-        .and_then(|variants| {
-            variants.iter().find(|v| normalize_ident(&v.name) == "transferallowdeath")
-        })
-        .map(|v| v.index)
-        .ok_or(Error::InvalidMetadata)?;
+    let transfer_allow_death_call_index =
+        get_variant_index(&portable_registry, calls_type_id, "transferallowdeath")?;
+    let transfer_keep_alive_call_index =
+        get_variant_index(&portable_registry, calls_type_id, "transferkeepalive")?;
+    let transfer_all_call_index =
+        get_variant_index(&portable_registry, calls_type_id, "transferall")?;
 
-    let system_pallet = pallets
-        .iter()
-        .find(|p| normalize_ident(&p.name) == "system")
-        .ok_or(Error::InvalidMetadata)?;
-
+    let system_pallet = get_pallet(&pallets, "system")?;
     let system_pallet_index = system_pallet.index;
-
-    let ss58_prefix = system_pallet
-        .constants
-        .iter()
-        .find(|(name, _)| normalize_ident(name) == "ss58prefix")
+    let ss58_prefix = get_constant(&system_pallet, "ss58prefix")
         .and_then(|(_, value)| decode_ss58_prefix(value))
         .ok_or(Error::InvalidMetadata)?;
 
-    let spec_version = system_pallet
-        .constants
-        .iter()
-        .find(|(name, _)| normalize_ident(name) == "version")
+    let spec_version = get_constant(&system_pallet, "version")
         .and_then(|(_, value)| decode_runtime_spec_version(value))
         .ok_or(Error::InvalidMetadata)?;
 
-    let transaction_payment_pallet_index = pallets
-        .iter()
-        .find(|p| normalize_ident(&p.name) == "transactionpayment")
-        .map(|p| p.index)
-        .ok_or(Error::InvalidMetadata)?;
+    let transaction_payment_pallet = get_pallet(&pallets, "transactionpayment")?;
+    let transaction_payment_pallet_index = transaction_payment_pallet.index;
+
+    let transaction_fee_paid_variant_index = get_variant_index(
+        &portable_registry,
+        transaction_payment_pallet.events_type_id.ok_or(Error::InvalidMetadata)?,
+        "transactionfeepaid",
+    )?;
+
+    let extrinsic_success_variant_index = get_variant_index(
+        &portable_registry,
+        system_pallet.events_type_id.ok_or(Error::InvalidMetadata)?,
+        "extrinsicsuccess",
+    )?;
+
+    let extrinsic_failed_variant_index = get_variant_index(
+        &portable_registry,
+        system_pallet.events_type_id.ok_or(Error::InvalidMetadata)?,
+        "extrinsicfailed",
+    )?;
 
     Ok(CxxPolkadotChainMetadata {
         system_pallet_index,
         balances_pallet_index,
         transaction_payment_pallet_index,
         transfer_allow_death_call_index,
+        transfer_keep_alive_call_index,
+        transfer_all_call_index,
+        transaction_fee_paid_variant_index,
+        extrinsic_success_variant_index,
+        extrinsic_failed_variant_index,
+        phase_apply_extrinsic_variant_index,
         ss58_prefix,
         spec_version,
     })
@@ -445,6 +529,12 @@ fn parse_chain_metadata_from_scale(
             balances_pallet_index: metadata.balances_pallet_index,
             transaction_payment_pallet_index: metadata.transaction_payment_pallet_index,
             transfer_allow_death_call_index: metadata.transfer_allow_death_call_index,
+            transfer_keep_alive_call_index: metadata.transfer_keep_alive_call_index,
+            transfer_all_call_index: metadata.transfer_all_call_index,
+            transaction_fee_paid_variant_index: metadata.transaction_fee_paid_variant_index,
+            extrinsic_success_variant_index: metadata.extrinsic_success_variant_index,
+            extrinsic_failed_variant_index: metadata.extrinsic_failed_variant_index,
+            phase_apply_extrinsic_variant_index: metadata.phase_apply_extrinsic_variant_index,
             ss58_prefix: metadata.ss58_prefix,
             spec_version: metadata.spec_version,
         }
