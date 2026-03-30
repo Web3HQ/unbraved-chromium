@@ -122,13 +122,6 @@ brave_chrome_browser_sources = [
   "//brave/chromium_src/chrome/browser/notifications/notification_handler_impl.h",
 ]
 
-if (enable_brave_wallet) {
-  brave_chrome_browser_sources += [
-    "//brave/browser/brave_wallet/wallet_data_files_installer_delegate_impl.cc",
-    "//brave/browser/brave_wallet/wallet_data_files_installer_delegate_impl.h",
-  ]
-}
-
 brave_chrome_browser_deps = [
   "//base",
   "//brave/app:brave_generated_resources_grit",
@@ -339,6 +332,7 @@ if (enable_brave_ads) {
 if (enable_brave_wallet) {
   brave_chrome_browser_deps += [
     "//brave/browser/brave_wallet",
+    "//brave/browser/brave_wallet:brave_wallet_data_files_installer_delegate_impl",
     "//brave/browser/brave_wallet:brave_wallet_delegate",
     "//brave/browser/brave_wallet:tab_helper",
     "//brave/components/brave_wallet/browser",
@@ -349,6 +343,25 @@ if (enable_brave_wallet) {
     "//brave/components/decentralized_dns/content",
     "//brave/components/decentralized_dns/core",
   ]
+}
+
+if (!is_android) {
+  # BraveHidDelegate inherits from ChromeHidDelegate, and referenced by
+  # BraveContentBrowserClient, so we put into the same source_set.
+  brave_chrome_browser_sources += [
+    "//brave/browser/hid/brave_hid_delegate.cc",
+    "//brave/browser/hid/brave_hid_delegate.h",
+  ]
+  brave_chrome_browser_deps += [
+    "//brave/components/brave_wallet/common/buildflags",
+    "//chrome/browser/hid",
+    "//chrome/browser/ui/hid",
+    "//services/device/public/cpp/hid",
+  ]
+  if (enable_brave_wallet) {
+    brave_chrome_browser_deps +=
+        [ "//brave/browser/brave_wallet:brave_wallet_hid_chooser" ]
+  }
 }
 
 if (!is_android) {
