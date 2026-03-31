@@ -56,9 +56,13 @@ class AdBlockFiltersProviderManager : public AdBlockFiltersProvider,
   void RemoveProvider(AdBlockFiltersProvider* provider,
                       bool is_for_default_engine);
 
+  void ForceNotifyObserver(AdBlockFiltersProvider::Observer& observer,
+                           bool is_default_engine);
   std::string GetNameForDebugging() override;
 
  private:
+  base::Time timestamp() const override;
+
   void FinishCombinating(
       base::OnceCallback<
           void(base::OnceCallback<void(rust::Box<adblock::FilterSet>*)>)> cb,

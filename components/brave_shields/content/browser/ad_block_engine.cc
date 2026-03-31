@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/containers/to_vector.h"
 #include "base/json/json_reader.h"
 #include "base/logging.h"
 #include "base/metrics/histogram_functions.h"
@@ -251,10 +252,10 @@ bool AdBlockEngine::Load(bool deserialize,
   }
 }
 
-void AdBlockEngine::Load(rust::Box<adblock::FilterSet> filter_set,
+bool AdBlockEngine::Load(rust::Box<adblock::FilterSet> filter_set,
                          const adblock::BraveCoreResourceStorage& storage) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  OnFilterSetLoaded(std::move(filter_set), storage);
+  return OnFilterSetLoaded(std::move(filter_set), storage);
 }
 
 void AdBlockEngine::UpdateAdBlockClient(
@@ -282,7 +283,7 @@ void AdBlockEngine::AddKnownTagsToAdBlockInstance() {
   });
 }
 
-void AdBlockEngine::OnFilterSetLoaded(
+bool AdBlockEngine::OnFilterSetLoaded(
     rust::Box<adblock::FilterSet> filter_set,
     const adblock::BraveCoreResourceStorage& storage) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -305,9 +306,10 @@ void AdBlockEngine::OnFilterSetLoaded(
   if (result.result_kind != adblock::ResultKind::Success) {
     VLOG(0) << "AdBlockEngine::OnFilterSetLoaded failed: "
             << result.error_message.c_str();
-    return;
+    return false;
   }
   UpdateAdBlockClient(std::move(result.value), storage);
+  return true;
 }
 
 bool AdBlockEngine::OnListSourceLoaded(
@@ -372,6 +374,12 @@ bool AdBlockEngine::OnDATLoaded(
 
   UpdateAdBlockClient(std::move(client), storage);
   return true;
+}
+
+DATFileDataBuffer AdBlockEngine::Serialize() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  auto rust_vec = ad_block_client_->serialize();
+  return base::ToVector(rust_vec);
 }
 
 void AdBlockEngine::AddObserverForTest(AdBlockEngine::TestObserver* observer) {

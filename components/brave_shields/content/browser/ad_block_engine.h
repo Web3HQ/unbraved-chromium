@@ -69,8 +69,10 @@ class AdBlockEngine {
   bool Load(bool deserialize,
             const DATFileDataBuffer& dat_buf,
             const adblock::BraveCoreResourceStorage& storage);
-  void Load(rust::Box<adblock::FilterSet> filter_set,
+  bool Load(rust::Box<adblock::FilterSet> filter_set,
             const adblock::BraveCoreResourceStorage& storage);
+
+  DATFileDataBuffer Serialize();
 
   class TestObserver : public base::CheckedObserver {
    public:
@@ -85,7 +87,7 @@ class AdBlockEngine {
   void UpdateAdBlockClient(rust::Box<adblock::Engine> ad_block_client,
                            const adblock::BraveCoreResourceStorage& storage);
 
-  void OnFilterSetLoaded(rust::Box<adblock::FilterSet> filter_set,
+  bool OnFilterSetLoaded(rust::Box<adblock::FilterSet> filter_set,
                          const adblock::BraveCoreResourceStorage& storage);
   bool OnListSourceLoaded(const DATFileDataBuffer& filters,
                           const adblock::BraveCoreResourceStorage& storage);

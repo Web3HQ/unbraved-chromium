@@ -6,6 +6,7 @@
 #include "brave/components/brave_shields/core/browser/ad_block_filters_provider_manager.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -15,7 +16,9 @@
 #include "base/notreached.h"
 #include "base/rand_util.h"
 #include "base/task/sequenced_task_runner.h"
+#include "base/time/time.h"
 #include "base/trace_event/trace_event.h"
+#include "brave/components/brave_shields/core/browser/ad_block_filters_provider.h"
 
 namespace brave_shields {
 
@@ -45,6 +48,23 @@ void AdBlockFiltersProviderManager::RemoveProvider(
   NotifyObservers(is_for_default_engine, base::Time::Now());
 }
 
+void AdBlockFiltersProviderManager::ForceNotifyObserver(
+    AdBlockFiltersProvider::Observer& observer,
+    bool is_for_default_engine) {
+  auto& filters_providers = is_for_default_engine
+                                ? default_engine_filters_providers_
+                                : additional_engine_filters_providers_;
+  std::optional<base::Time> timestamp;
+  for (auto*& provider : filters_providers) {
+    if (provider->IsInitialized() && provider->timestamp() > timestamp) {
+      timestamp = provider->timestamp();
+    }
+  }
+
+  if (timestamp) {
+    observer.OnChanged(is_for_default_engine, timestamp.value());
+  }
+}
 std::string AdBlockFiltersProviderManager::GetNameForDebugging() {
   return "AdBlockFiltersProviderManager";
 }
@@ -102,6 +122,10 @@ void RunAllResults(
   for (auto& cb : results) {
     std::move(cb).Run(filter_set);
   }
+}
+
+base::Time AdBlockFiltersProviderManager::timestamp() const {
+  NOTREACHED();
 }
 
 void AdBlockFiltersProviderManager::FinishCombinating(

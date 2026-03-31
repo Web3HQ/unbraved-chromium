@@ -71,6 +71,13 @@ std::string AdBlockSubscriptionFiltersProvider::GetNameForDebugging() {
   return "AdBlockSubscriptionFiltersProvider";
 }
 
+void AdBlockSubscriptionFiltersProvider::CacheTimestampAndNotifyObservers(
+    bool engine_is_default,
+    base::Time timestamp) {
+  last_modified_ = timestamp;
+  NotifyObservers(engine_is_default, timestamp);
+}
+
 void AdBlockSubscriptionFiltersProvider::OnDATFileDataReady(
     base::OnceCallback<
         void(base::OnceCallback<void(rust::Box<adblock::FilterSet>*)>)> cb,
@@ -106,9 +113,14 @@ void AdBlockSubscriptionFiltersProvider::OnListAvailable(bool force_new) {
               return info.last_modified;
             },
             list_file_),
-        base::BindOnce(&AdBlockSubscriptionFiltersProvider::NotifyObservers,
+        base::BindOnce(&AdBlockSubscriptionFiltersProvider::
+                           CacheTimestampAndNotifyObservers,
                        weak_factory_.GetWeakPtr(), engine_is_default_));
   }
+}
+
+base::Time AdBlockSubscriptionFiltersProvider::timestamp() const {
+  return base::Time();
 }
 
 }  // namespace brave_shields

@@ -5,8 +5,10 @@
 
 #include "brave/components/brave_shields/content/browser/ad_block_service.h"
 
+#include <cstdint>
 #include <memory>
 #include <optional>
+#include <string_view>
 #include <utility>
 
 #include "base/check.h"
@@ -16,9 +18,15 @@
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/functional/bind.h"
+#include "base/functional/callback.h"
 #include "base/functional/callback_forward.h"
-#include "base/task/bind_post_task.h"
+#include "base/location.h"
+#include "base/memory/scoped_refptr.h"
+#include "base/memory/weak_ptr.h"
+#include "base/sequence_checker.h"
+#include "base/task/thread_pool.h"
 #include "base/trace_event/trace_event.h"
+#include "brave/components/brave_component_updater/browser/dat_file_util.h"
 #include "brave/components/brave_shields/content/browser/ad_block_custom_filters_provider.h"
 #include "brave/components/brave_shields/content/browser/ad_block_engine.h"
 #include "brave/components/brave_shields/content/browser/ad_block_engine_wrapper.h"
@@ -30,6 +38,7 @@
 #include "brave/components/brave_shields/core/browser/ad_block_default_resource_provider.h"
 #include "brave/components/brave_shields/core/browser/ad_block_filter_list_catalog_provider.h"
 #include "brave/components/brave_shields/core/browser/ad_block_filters_provider_manager.h"
+#include "brave/components/brave_shields/core/browser/ad_block_resource_provider.h"
 #include "brave/components/brave_shields/core/common/adblock/rs/src/lib.rs.h"
 #include "brave/components/brave_shields/core/common/features.h"
 #include "brave/components/brave_shields/core/common/pref_names.h"
@@ -41,34 +50,22 @@ namespace brave_shields {
 
 namespace {
 constexpr char kAdblockCacheDir[] = "adblock_cache";
+constexpr char kAdBlockEngine0DATCache[] = "engine0.dat";
+constexpr char kAdBlockEngine1DATCache[] = "engine1.dat";
 
-std::optional<std::pair<DATFileDataBuffer, DATFileDataBuffer>>
+std::pair<std::optional<DATFileDataBuffer>, std::optional<DATFileDataBuffer>>
 ReadCachedDATFiles(base::FilePath cache_dir) {
-  if (!base::DirectoryExists(cache_dir)) {
-    base::CreateDirectory(cache_dir);
-    return std::nullopt;
+  if (!base::CreateDirectory(cache_dir)) {
+    return std::make_pair(std::nullopt, std::nullopt);
   }
 
-  base::FilePath default_engine_dat_file = cache_dir.AppendASCII("engine0.dat");
+  base::FilePath default_engine_dat_file =
+      cache_dir.AppendASCII(kAdBlockEngine0DATCache);
   base::FilePath additional_engine_dat_file =
-      cache_dir.AppendASCII("engine1.dat");
-  if (!base::PathExists(default_engine_dat_file) ||
-      !base::PathExists(additional_engine_dat_file)) {
-    return std::nullopt;
-  }
+      cache_dir.AppendASCII(kAdBlockEngine1DATCache);
 
-  auto default_engine_dat = base::ReadFileToBytes(default_engine_dat_file);
-  if (!default_engine_dat) {
-    return std::nullopt;
-  }
-  auto additional_engine_dat =
-      base::ReadFileToBytes(additional_engine_dat_file);
-  if (!additional_engine_dat) {
-    return std::nullopt;
-  }
-
-  return std::make_optional(std::make_pair(std::move(*default_engine_dat),
-                                           std::move(*additional_engine_dat)));
+  return std::make_pair(base::ReadFileToBytes(default_engine_dat_file),
+                        base::ReadFileToBytes(additional_engine_dat_file));
 }
 }  // namespace
 
@@ -76,18 +73,19 @@ AdBlockService::SourceProviderObserver::SourceProviderObserver(
     OnResourcesLoadedCallback on_resources_loaded,
     AdBlockResourceProvider* resource_provider,
     AdBlockFiltersProviderManager* filters_provider_manager,
-    scoped_refptr<base::SequencedTaskRunner> task_runner,
-    bool engine_is_default)
+    ShouldLoadFilterSetCallback should_load_filter_set,
+    bool engine_is_default,
+    scoped_refptr<base::SequencedTaskRunner> task_runner)
     : on_resources_loaded_(std::move(on_resources_loaded)),
-      engine_is_default_(engine_is_default),
       resource_provider_(resource_provider),
       filters_provider_manager_(filters_provider_manager),
+      should_load_filter_set_(should_load_filter_set),
+      engine_is_default_(engine_is_default),
       task_runner_(std::move(task_runner)) {
   filters_provider_manager_->AddObserver(this);
-  OnChanged(engine_is_default_);
 }
 
-AdBlockService::SourceProviderObserver::~SourceProviderObserver()
+AdBlockService::SourceProviderObserver::~SourceProviderObserver() {
   filters_provider_manager_->RemoveObserver(this);
   resource_provider_->RemoveObserver(this);
 }
@@ -98,51 +96,19 @@ void AdBlockService::SourceProviderObserver::OnChanged(bool is_default_engine,
     // Skip updates of another engine.
     return;
   }
-  int64_t cache_timestamp_value = local_state_->GetInt64(cache_timestamp_pref_);
-  base::Time cache_timestamp =
-      base::Time::FromMillisecondsSinceUnixEpoch(cache_timestamp_value);
-  // Add 1 millisecond since `timestamp` may have microsecond resolution
-  if (cache_timestamp_value != 0 &&
-      (timestamp <= cache_timestamp + base::Milliseconds(1) ||
-       cache_timestamp > base::Time::Now())) {
+
+  if (!should_load_filter_set_.Run(timestamp)) {
     // Skip updates that have already been cached.
     return;
   }
-  auto on_loaded_cb = base::BindOnce(
-      &AdBlockService::SourceProviderObserver::OnFilterSetCallbackLoaded,
-      weak_factory_.GetWeakPtr(), timestamp);
+  auto on_loaded_cb =
+      base::BindOnce(&AdBlockService::SourceProviderObserver::OnFilterSetLoaded,
+                     weak_factory_.GetWeakPtr(), timestamp);
   filters_provider_manager_->LoadFilterSetForEngine(is_default_engine,
                                                     std::move(on_loaded_cb));
 }
 
-void AdBlockService::SourceProviderObserver::PreloadCachedDAT(
-    DATFileDataBuffer dat) {
-  task_runner_->PostTaskAndReplyWithResult(
-      FROM_HERE,
-      base::BindOnce(
-          [](base::WeakPtr<AdBlockEngine> engine, DATFileDataBuffer dat) {
-            if (engine) {
-              // Resources will be loaded when available
-              auto empty_resources = adblock::new_empty_resource_storage();
-              return engine->Load(true, std::move(dat), *empty_resources);
-            }
-            return false;
-          },
-          adblock_engine_->AsWeakPtr(), std::move(dat)),
-      base::BindOnce(
-          &AdBlockService::SourceProviderObserver::OnPreloadCachedDAT,
-          weak_factory_.GetWeakPtr()));
-}
-
-void AdBlockService::SourceProviderObserver::OnPreloadCachedDAT(bool success) {
-  if (success) {
-    LoadResources();
-  } else {
-    OnChanged(adblock_engine_->IsDefaultEngine(), base::Time());
-  }
-}
-
-void AdBlockService::SourceProviderObserver::OnFilterSetCallbackLoaded(
+void AdBlockService::SourceProviderObserver::OnFilterSetLoaded(
     base::Time timestamp,
     base::OnceCallback<void(rust::Box<adblock::FilterSet>*)> cb) {
   task_runner_->PostTaskAndReplyWithResult(
@@ -160,21 +126,32 @@ void AdBlockService::SourceProviderObserver::OnFilterSetCallbackLoaded(
           weak_factory_.GetWeakPtr(), timestamp));
 }
 
-void AdBlockService::SourceProviderObserver::OnFilterSetCreated(
-    base::Time timestamp,
-    std::unique_ptr<rust::Box<adblock::FilterSet>> filter_set) {
-  TRACE_EVENT("brave.adblock", "OnFilterSetCreated");
-  filter_set_ = std::move(filter_set);
-  timestamp_ = std::move(timestamp);
+void AdBlockService::SourceProviderObserver::LoadResources() {
   // multiple AddObserver calls are ignored
   resource_provider_->AddObserver(this);
   resource_provider_->LoadResources(base::BindOnce(
       &SourceProviderObserver::OnResourcesLoaded, weak_factory_.GetWeakPtr()));
 }
 
+void AdBlockService::SourceProviderObserver::OnDATFileLoaded(
+    DATFileDataBuffer dat) {
+  dat_ = std::move(dat);
+  LoadResources();
+}
+
+void AdBlockService::SourceProviderObserver::OnFilterSetCreated(
+    base::Time timestamp,
+    std::unique_ptr<rust::Box<adblock::FilterSet>> filter_set) {
+  TRACE_EVENT("brave.adblock", "OnFilterSetCreated");
+  filter_set_ = std::move(filter_set);
+  timestamp_ = std::move(timestamp);
+  LoadResources();
+}
+
 void AdBlockService::SourceProviderObserver::OnResourcesLoaded(
     AdblockResourceStorageBox storage) {
-  on_resources_loaded_.Run(engine_is_default_, std::move(filter_set_),
+  on_resources_loaded_.Run(engine_is_default_, std::move(dat_),
+                           std::move(filter_set_), std::move(timestamp_),
                            std::move(storage));
 }
 
@@ -231,12 +208,6 @@ AdBlockService::AdBlockService(
     SetupDiscardPolicy(policy);
   }
 
-  base::FilePath cache_dir = profile_dir_.AppendASCII(kAdblockCacheDir);
-  GetTaskRunner()->PostTaskAndReplyWithResult(
-      FROM_HERE, base::BindOnce(&ReadCachedDATFiles, cache_dir),
-      base::BindOnce(&AdBlockService::OnReadCachedDATFiles,
-                     weak_factory_.GetWeakPtr()));
-
   auto default_resource_provider =
       std::make_unique<AdBlockDefaultResourceProvider>(
           component_update_service_);
@@ -245,6 +216,15 @@ AdBlockService::AdBlockService(
   custom_resource_provider_ = new AdBlockCustomResourceProvider(
       profile_dir_, std::move(default_resource_provider));
   resource_provider_.reset(custom_resource_provider_.get());
+
+  base::FilePath cache_dir = profile_dir_.AppendASCII(kAdblockCacheDir);
+  base::ThreadPool::PostTaskAndReplyWithResult(
+      FROM_HERE,
+      {base::MayBlock(), base::TaskShutdownBehavior::SKIP_ON_SHUTDOWN},
+      base::BindOnce(&ReadCachedDATFiles, cache_dir),
+      base::BindOnce(&AdBlockService::OnReadCachedDATFiles,
+                     weak_factory_.GetWeakPtr()));
+
   filter_list_catalog_provider_ =
       std::make_unique<AdBlockFilterListCatalogProvider>(
           component_update_service_);
@@ -274,18 +254,23 @@ AdBlockService::AdBlockService(
             filters_provider_manager_.get());
   }
 
-  const auto make_on_resources_loaded_callback = base::BindPostTask(
-      task_runner_,
-      base::BindRepeating(&AdBlockEngineWrapper::OnResourcesLoaded,
-                          base::Unretained(engine_wrapper_.get())));
+  const auto make_on_resources_loaded_callback = base::BindRepeating(
+      &AdBlockService::OnResourcesLoaded, base::Unretained(this));
+
+  const auto should_load_filter_state_callback = base::BindRepeating(
+      &AdBlockService::ShouldLoadFilterState, base::Unretained(this));
 
   default_service_observer_ = std::make_unique<SourceProviderObserver>(
       make_on_resources_loaded_callback, resource_provider_.get(),
-      filters_provider_manager_.get(), task_runner_, true);
+      filters_provider_manager_.get(),
+      base::BindRepeating(should_load_filter_state_callback, false), true,
+      task_runner_);
   additional_filters_service_observer_ =
       std::make_unique<SourceProviderObserver>(
           make_on_resources_loaded_callback, resource_provider_.get(),
-          filters_provider_manager_.get(), task_runner_, false);
+          filters_provider_manager_.get(),
+          base::BindRepeating(should_load_filter_state_callback, false), false,
+          task_runner_);
 }
 
 AdBlockService::~AdBlockService() {
@@ -294,17 +279,107 @@ AdBlockService::~AdBlockService() {
   ANNOTATE_LEAKING_OBJECT_PTR(engine_wrapper_.get());
 }
 
-void AdBlockService::OnReadCachedDATFiles(
-    std::optional<std::pair<DATFileDataBuffer, DATFileDataBuffer>>
-        read_result) {
+void AdBlockService::OnResourcesLoaded(
+    bool is_default_engine,
+    DATFileDataBuffer dat,
+    std::unique_ptr<rust::Box<adblock::FilterSet>> filter_set,
+    base::Time timestamp,
+    AdblockResourceStorageBox storage) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (!read_result) {
-    ActivateFilterLoading();
+
+  if (!dat.empty()) {
+    if (allow_load_dat_loading_) {
+      task_runner_->PostTaskAndReplyWithResult(
+          FROM_HERE,
+          base::BindOnce(&AdBlockEngineWrapper::LoadDAT,
+                         base::Unretained(engine_wrapper_.get()),
+                         is_default_engine, std::move(dat), std::move(storage)),
+          base::BindOnce(&AdBlockService::NotifyOnDATLoaded,
+                         weak_factory_.GetWeakPtr(), is_default_engine));
+    } else {
+      NotifyOnDATLoaded(is_default_engine, false);
+    }
   } else {
-    default_service_observer_->PreloadCachedDAT(std::move(read_result->first));
-    additional_filters_service_observer_->PreloadCachedDAT(
-        std::move(read_result->second));
+    task_runner_->PostTaskAndReplyWithResult(
+        FROM_HERE,
+        base::BindOnce(
+            [](AdBlockEngineWrapper* engine_wrapper, bool is_default_engine,
+               std::unique_ptr<rust::Box<adblock::FilterSet>> filter_set,
+               AdblockResourceStorageBox storage, base::FilePath cache_dir) {
+              if (!engine_wrapper->Load(is_default_engine,
+                                        std::move(filter_set),
+                                        std::move(storage))) {
+                return false;
+              }
+
+              if (!base::CreateDirectory(cache_dir)) {
+                return false;
+              }
+              return base::WriteFile(
+                  cache_dir.AppendASCII(is_default_engine
+                                            ? kAdBlockEngine0DATCache
+                                            : kAdBlockEngine1DATCache),
+                  engine_wrapper->Serialize(is_default_engine));
+            },
+            base::Unretained(engine_wrapper_.get()), is_default_engine,
+            std::move(filter_set), std::move(storage),
+            profile_dir_.AppendASCII(kAdblockCacheDir)),
+        base::BindOnce(&AdBlockService::OnDatCached, weak_factory_.GetWeakPtr(),
+                       is_default_engine, std::move(timestamp)));
+    // Block DAT loading if a FilterList has been loaded already
+    allow_load_dat_loading_ = false;
   }
+
+  for (auto& observer : observers_) {
+    observer.OnResourcesLoaded(is_default_engine);
+  }
+}
+
+void AdBlockService::NotifyOnDATLoaded(bool is_default_engine, bool success) {
+  for (auto& observer : observers_) {
+    observer.OnDATFileLoaded(is_default_engine, success);
+  }
+}
+
+void AdBlockService::OnDatCached(bool is_default_engine,
+                                 base::Time timestamp,
+                                 bool success) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (success) {
+    local_state_->SetTime(cache_timestamp_pref_name(is_default_engine),
+                          timestamp);
+  }
+  for (auto& observer : observers_) {
+    observer.OnFilterListLoaded(is_default_engine, success);
+  }
+}
+
+void AdBlockService::OnReadCachedDATFiles(
+    std::pair<std::optional<DATFileDataBuffer>,
+              std::optional<DATFileDataBuffer>> read_result) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (read_result.first && allow_load_dat_loading_) {
+    default_service_observer_->OnDATFileLoaded(std::move(*read_result.first));
+    NotifyOnDATLoaded(true, true);
+  } else {
+    NotifyOnDATLoaded(true, false);
+  }
+
+  if (read_result.second && allow_load_dat_loading_) {
+    additional_filters_service_observer_->OnDATFileLoaded(
+        std::move(*read_result.second));
+    NotifyOnDATLoaded(false, true);
+  } else {
+    NotifyOnDATLoaded(false, false);
+  }
+}
+
+void AdBlockService::AddObserver(Observer* observer) {
+  observers_.AddObserver(observer);
+}
+
+void AdBlockService::RemoveObserver(Observer* observer) {
+  observers_.RemoveObserver(observer);
 }
 
 void AdBlockService::EnableTag(const std::string& tag, bool enabled) {
@@ -357,12 +432,39 @@ void AdBlockService::SetupDiscardPolicy(
                      base::Unretained(engine_wrapper_.get()), policy));
 }
 
+<<<<<<< HEAD
+=======
+base::SequencedTaskRunner* AdBlockService::GetTaskRunner() {
+  return task_runner_.get();
+}
+
+bool AdBlockService::ShouldLoadFilterState(bool is_default_engine,
+                                           base::Time timestamp) {
+  base::Time cache_timestamp =
+      local_state_->GetTime(cache_timestamp_pref_name(is_default_engine));
+
+  if (timestamp <= cache_timestamp && cache_timestamp != base::Time() &&
+      !(cache_timestamp > base::Time::Now())) {
+    // Skip updates that have already been cached.
+    return false;
+  }
+  return true;
+}
+
+std::string_view AdBlockService::cache_timestamp_pref_name(
+    bool engine_is_default) {
+  return engine_is_default ? prefs::kAdBlockDefaultCacheTimestamp
+                           : prefs::kAdBlockAdditionalCacheTimestamp;
+}
+
+>>>>>>> 48549b31e19 (fixup)
 void RegisterPrefsForAdBlockService(PrefRegistrySimple* registry) {
   registry->RegisterBooleanPref(prefs::kAdBlockCookieListSettingTouched, false);
   registry->RegisterBooleanPref(
       prefs::kAdBlockMobileNotificationsListSettingTouched, false);
   registry->RegisterStringPref(prefs::kAdBlockCustomFilters, std::string());
-  registry->RegisterInt64Pref(prefs::kAdBlockCustomFiltersLastModified, 0);
+  registry->RegisterTimePref(prefs::kAdBlockCustomFiltersLastModified,
+                             base::Time());
   registry->RegisterDictionaryPref(prefs::kAdBlockRegionalFilters);
   registry->RegisterDictionaryPref(prefs::kAdBlockListSubscriptions);
   registry->RegisterBooleanPref(prefs::kAdBlockCheckedDefaultRegion, false);
@@ -370,8 +472,10 @@ void RegisterPrefsForAdBlockService(PrefRegistrySimple* registry) {
   registry->RegisterBooleanPref(prefs::kAdBlockOnlyModeEnabled, false);
   registry->RegisterBooleanPref(
       prefs::kAdBlockOnlyModeWasEnabledForSupportedLocale, false);
-  registry->RegisterInt64Pref(prefs::kAdBlockDefaultCacheTimestamp, 0);
-  registry->RegisterInt64Pref(prefs::kAdBlockAdditionalCacheTimestamp, 0);
+  registry->RegisterTimePref(prefs::kAdBlockDefaultCacheTimestamp,
+                             base::Time());
+  registry->RegisterTimePref(prefs::kAdBlockAdditionalCacheTimestamp,
+                             base::Time());
 }
 
 void RegisterPrefsForAdBlockServiceForMigration(PrefRegistrySimple* registry) {

@@ -11,6 +11,7 @@
 #include "base/files/file.h"
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
+#include "base/time/time.h"
 #include "brave/components/brave_component_updater/browser/dat_file_util.h"
 #include "brave/components/brave_shields/core/browser/ad_block_filters_provider.h"
 #include "brave/components/brave_shields/core/browser/ad_block_filters_provider_manager.h"
@@ -72,6 +73,8 @@ class AdBlockComponentFiltersProvider : public AdBlockFiltersProvider {
   std::string GetNameForDebugging() override;
 
   bool IsInitialized() const override;
+
+  base::Time timestamp() const override;
 
  private:
   friend class ::AdBlockServiceTest;

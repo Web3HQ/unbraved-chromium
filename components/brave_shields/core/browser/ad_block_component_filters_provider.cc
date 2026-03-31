@@ -143,6 +143,10 @@ bool AdBlockComponentFiltersProvider::IsInitialized() const {
   return !component_path_.empty();
 }
 
+base::Time AdBlockComponentFiltersProvider::timestamp() const {
+  return last_updated_;
+}
+
 base::FilePath AdBlockComponentFiltersProvider::GetFilterSetPath() {
   if (component_path_.empty()) {
     // Since we know it's empty return it as is.

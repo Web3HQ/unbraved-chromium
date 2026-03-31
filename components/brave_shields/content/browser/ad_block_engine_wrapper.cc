@@ -20,6 +20,7 @@
 #include "base/strings/strcat.h"
 #include "base/trace_event/trace_event.h"
 #include "base/values.h"
+#include "brave/components/brave_component_updater/browser/dat_file_util.h"
 #include "brave/components/brave_shields/content/browser/ad_block_engine.h"
 #include "brave/components/brave_shields/core/browser/ad_block_resource_provider.h"
 #include "brave/components/brave_shields/core/browser/ad_block_service_helper.h"
@@ -106,7 +107,7 @@ adblock::BlockerResult AdBlockEngineWrapper::ShouldStartRequest(
   return result;
 }
 
-void AdBlockEngineWrapper::OnResourcesLoaded(
+bool AdBlockEngineWrapper::Load(
     bool is_default_engine,
     std::unique_ptr<rust::Box<adblock::FilterSet>> filter_set,
     AdblockResourceStorageBox storage) {
@@ -114,10 +115,32 @@ void AdBlockEngineWrapper::OnResourcesLoaded(
   auto* engine = is_default_engine ? default_engine_.get()
                                    : additional_filters_engine_.get();
   if (filter_set) {
-    engine->Load(std::move(*filter_set), *storage);
+    return engine->Load(std::move(*filter_set), *storage);
   } else {
     engine->UseResources(*storage);
+    return true;
   }
+}
+
+bool AdBlockEngineWrapper::LoadDAT(bool is_default_engine,
+                                   DATFileDataBuffer dat,
+                                   AdblockResourceStorageBox storage) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  auto* engine = is_default_engine ? default_engine_.get()
+                                   : additional_filters_engine_.get();
+  if (!dat.empty()) {
+    return engine->Load(true, std::move(dat), *storage);
+  } else {
+    engine->UseResources(*storage);
+    return true;
+  }
+}
+
+DATFileDataBuffer AdBlockEngineWrapper::Serialize(bool is_default_engine) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  auto* engine = is_default_engine ? default_engine_.get()
+                                   : additional_filters_engine_.get();
+  return engine->Serialize();
 }
 
 std::optional<std::string> AdBlockEngineWrapper::GetCspDirectives(
