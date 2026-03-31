@@ -343,7 +343,8 @@ void AIChatCredentialManager::CreateOrderFromReceipt(
   base::JSONWriter::Write(request, &request_json);
 
   std::string encoded_request_json = base::Base64Encode(request_json);
-  skus_service_->CreateOrderFromReceipt(leo_sku_domain, encoded_request_json, std::move(callback));
+  skus_service_->CreateOrderFromReceipt(leo_sku_domain, encoded_request_json,
+                                        std::move(callback));
 }
 
 void AIChatCredentialManager::FetchOrderCredentials(
@@ -351,7 +352,8 @@ void AIChatCredentialManager::FetchOrderCredentials(
     skus::mojom::SkusService::FetchOrderCredentialsCallback callback) {
   if (!EnsureMojoConnected()) {
     std::move(callback).Run(
-        skus::mojom::SkusResult::New(skus::mojom::SkusResultCode::InvalidCall, "EnsureMojoConnected Failed"));
+        skus::mojom::SkusResult::New(skus::mojom::SkusResultCode::InvalidCall,
+                                     "EnsureMojoConnected Failed"));
     return;
   }
 
@@ -389,7 +391,9 @@ bool AIChatCredentialManager::EnsureMojoConnected() {
   }
   // Some profiles can't have skus service, so we still might not have one
   if (skus_service_) {
-    skus_service_.set_disconnect_handler( base::BindOnce(&AIChatCredentialManager::OnMojoConnectionError, weak_ptr_factory_.GetWeakPtr()));
+    skus_service_.set_disconnect_handler(
+        base::BindOnce(&AIChatCredentialManager::OnMojoConnectionError,
+                       weak_ptr_factory_.GetWeakPtr()));
   }
   return !!skus_service_;
 }
