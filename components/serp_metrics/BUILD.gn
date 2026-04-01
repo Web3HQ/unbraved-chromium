@@ -48,18 +48,56 @@ source_set("prefs") {
   public = [ "pref_names.h" ]
 }
 
+source_set("test_support") {
+  testonly = true
+
+  public = [
+    "test/fake_time_period_store.h",
+    "test/fake_time_period_store_factory.h",
+    "test/serp_metrics_calendar_test_util.h",
+    "test/serp_metrics_test_base.h",
+  ]
+
+  sources = [
+    "test/fake_time_period_store.cc",
+    "test/fake_time_period_store.h",
+    "test/fake_time_period_store_factory.cc",
+    "test/fake_time_period_store_factory.h",
+    "test/serp_metrics_calendar_test_util.h",
+    "test/serp_metrics_test_base.cc",
+    "test/serp_metrics_test_base.h",
+  ]
+
+  public_deps = [
+    ":features",
+    ":serp_metrics",
+    "//base",
+    "//base/test:test_support",
+    "//brave/components/constants",
+    "//brave/components/time_period_storage",
+    "//components/prefs:test_support",
+    "//testing/gtest",
+    "//third_party/abseil-cpp:absl",
+  ]
+
+  deps = [ "//components/prefs" ]
+}
+
 source_set("unit_tests") {
   testonly = true
 
   sources = [
     "serp_classifier_unittest.cc",
     "serp_classifier_utils_unittest.cc",
-    "serp_metrics_unittest.cc",
+    "serp_metrics_daily_unittest.cc",
+    "serp_metrics_monthly_unittest.cc",
+    "serp_metrics_weekly_unittest.cc",
   ]
 
   deps = [
     ":features",
     ":serp_metrics",
+    ":test_support",
     "//base",
     "//base/test:test_support",
     "//brave/components/constants",
