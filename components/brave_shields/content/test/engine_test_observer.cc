@@ -5,16 +5,35 @@
 
 #include "brave/components/brave_shields/content/test/engine_test_observer.h"
 
-EngineTestObserver::EngineTestObserver(brave_shields::AdBlockEngine* engine)
-    : engine_(engine) {
-  engine_->AddObserverForTest(this);
+#include "base/check.h"
+#include "base/task/bind_post_task.h"
+#include "brave/components/brave_shields/content/browser/ad_block_engine.h"
+#include "brave/components/brave_shields/content/browser/ad_block_engine_wrapper.h"
+#include "brave/components/brave_shields/content/browser/ad_block_service.h"
+
+EngineTestObserver::EngineTestObserver(
+    brave_shields::AdBlockService* ad_block_service,
+    bool is_default_engine) {
+  CHECK(ad_block_service);
+
+  auto async_notify_engine_updated =
+      base::BindPostTaskToCurrentDefault(base::BindRepeating(
+          &EngineTestObserver::OnEngineUpdated, weak_factory_.GetWeakPtr()));
+  ad_block_service->AsyncCall(base::BindOnce(
+      [](bool is_default_engine,
+         base::RepeatingClosure async_notify_engine_updated,
+         brave_shields::AdBlockEngineWrapper* wrapper) {
+        auto& engine = is_default_engine
+                           ? wrapper->default_engine_for_testing()
+                           : wrapper->additional_filters_engine_for_testing();
+        engine.AddOnEngineUpdatedCallbackForTesting(
+            std::move(async_notify_engine_updated));  // IN-TEST
+      },
+      is_default_engine, std::move(async_notify_engine_updated)));
 }
 
-EngineTestObserver::~EngineTestObserver() {
-  engine_->RemoveObserverForTest();
-}
+EngineTestObserver::~EngineTestObserver() = default;
 
-// Blocks until the engine is updated
 void EngineTestObserver::Wait() {
   run_loop_.Run();
 }

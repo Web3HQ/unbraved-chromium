@@ -6,29 +6,32 @@
 #ifndef BRAVE_COMPONENTS_BRAVE_SHIELDS_CONTENT_TEST_ENGINE_TEST_OBSERVER_H_
 #define BRAVE_COMPONENTS_BRAVE_SHIELDS_CONTENT_TEST_ENGINE_TEST_OBSERVER_H_
 
+#include "base/memory/weak_ptr.h"
 #include "base/run_loop.h"
-#include "brave/components/brave_shields/content/browser/ad_block_engine.h"
+
+namespace brave_shields {
+class AdBlockService;
+}
 
 // A test observer that allows blocking waits for an AdBlockEngine to be
 // updated with new rules.
-class EngineTestObserver : public brave_shields::AdBlockEngine::TestObserver {
+class EngineTestObserver {
  public:
-  // Constructs an EngineTestObserver which will observe the given adblock
-  // engine for filter data updates.
-  explicit EngineTestObserver(brave_shields::AdBlockEngine* engine);
-  ~EngineTestObserver() override;
-
-  EngineTestObserver(const EngineTestObserver& other);
-  EngineTestObserver& operator=(const EngineTestObserver& other);
+  // Constructs an EngineTestObserver observing the selected engine
+  // asynchronously via AdBlockService task-runner APIs.
+  EngineTestObserver(brave_shields::AdBlockService* ad_block_service,
+                     bool is_default_engine);
+  ~EngineTestObserver();
 
   // Blocks until the engine is updated
   void Wait();
 
  private:
-  void OnEngineUpdated() override;
+  void OnEngineUpdated();
 
   base::RunLoop run_loop_;
-  raw_ptr<brave_shields::AdBlockEngine> engine_ = nullptr;
+
+  base::WeakPtrFactory<EngineTestObserver> weak_factory_{this};
 };
 
 #endif  // BRAVE_COMPONENTS_BRAVE_SHIELDS_CONTENT_TEST_ENGINE_TEST_OBSERVER_H_
