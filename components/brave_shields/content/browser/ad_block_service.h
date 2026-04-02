@@ -60,9 +60,6 @@ class AdBlockCustomResourceProvider;
 class AdBlockLocalhostFiltersProvider;
 class AdBlockFilterListCatalogProvider;
 class AdBlockSubscriptionServiceManager;
-class CosmeticResourceMergeTest;
-class StripProceduralFiltersTest;
-class TestFiltersProvider;
 
 // The brave shields service in charge of ad-block checking and init.
 class AdBlockService {
