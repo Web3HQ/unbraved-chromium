@@ -432,12 +432,6 @@ void AdBlockService::SetupDiscardPolicy(
                      base::Unretained(engine_wrapper_.get()), policy));
 }
 
-<<<<<<< HEAD
-=======
-base::SequencedTaskRunner* AdBlockService::GetTaskRunner() {
-  return task_runner_.get();
-}
-
 bool AdBlockService::ShouldLoadFilterState(bool is_default_engine,
                                            base::Time timestamp) {
   base::Time cache_timestamp =
@@ -457,7 +451,6 @@ std::string_view AdBlockService::cache_timestamp_pref_name(
                            : prefs::kAdBlockAdditionalCacheTimestamp;
 }
 
->>>>>>> 48549b31e19 (fixup)
 void RegisterPrefsForAdBlockService(PrefRegistrySimple* registry) {
   registry->RegisterBooleanPref(prefs::kAdBlockCookieListSettingTouched, false);
   registry->RegisterBooleanPref(
@@ -522,6 +515,12 @@ base::SequencedTaskRunner* AdBlockService::GetTaskRunnerForTesting() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   CHECK_IS_TEST();
   return task_runner_.get();
+}
+
+bool AdBlockService::GetAllowDatLoadingForTesting() const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  CHECK_IS_TEST();
+  return allow_load_dat_loading_;
 }
 
 }  // namespace brave_shields

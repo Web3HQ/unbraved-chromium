@@ -17,9 +17,9 @@
 
 #include "base/files/file_path.h"
 #include "base/functional/bind.h"
-#include "base/location.h"
 #include "base/functional/callback.h"
 #include "base/functional/callback_forward.h"
+#include "base/location.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/observer_list.h"
@@ -196,11 +196,7 @@ class AdBlockService {
   AdBlockFiltersProviderManager* GetFiltersProviderManagerForTesting();
   AdBlockDefaultResourceProvider* GetDefaultResourceProviderForTesting();
   base::SequencedTaskRunner* GetTaskRunnerForTesting();
-
-  bool allow_dat_loading_for_testing() const {
-    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-    return allow_load_dat_loading_;
-  }
+  bool GetAllowDatLoadingForTesting() const;
 
  private:
   static std::string g_ad_block_dat_file_version_;
@@ -219,7 +215,8 @@ class AdBlockService {
   void NotifyOnDATLoaded(bool success, bool is_default_engine);
   void OnDatCached(bool is_default_engine, base::Time timestamp, bool success);
   void OnReadCachedDATFiles(
-      std::pair<std::optional<DATFileDataBuffer>, std::optional<DATFileDataBuffer>> read_result);
+      std::pair<std::optional<DATFileDataBuffer>,
+                std::optional<DATFileDataBuffer>> read_result);
 
   AdBlockComponentFiltersProvider* default_filters_provider() {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
