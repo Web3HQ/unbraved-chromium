@@ -14,13 +14,13 @@
 #include <vector>
 
 #include "base/check.h"
+#include "base/debug/leak_annotations.h"
 #include "base/feature_list.h"
 #include "base/json/json_reader.h"
 #include "base/sequence_checker.h"
 #include "base/strings/strcat.h"
 #include "base/trace_event/trace_event.h"
 #include "base/values.h"
-#include "base/debug/leak_annotations.h"
 #include "brave/components/brave_shields/content/browser/ad_block_engine.h"
 #include "brave/components/brave_shields/core/browser/ad_block_resource_provider.h"
 #include "brave/components/brave_shields/core/browser/ad_block_service_helper.h"

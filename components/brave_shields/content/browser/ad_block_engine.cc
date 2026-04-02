@@ -373,7 +373,7 @@ void AdBlockEngine::OnDATLoaded(
   UpdateAdBlockClient(std::move(client), storage);
 }
 
-void AdBlockEngine::AddOnEngineUpdatedCallbackForTesting(
+void AdBlockEngine::AddOnEngineUpdatedCallbackForTesting(  // IN-TEST
     base::RepeatingClosure callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   CHECK_IS_TEST();
