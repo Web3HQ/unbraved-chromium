@@ -20,6 +20,7 @@
 #include "base/strings/strcat.h"
 #include "base/trace_event/trace_event.h"
 #include "base/values.h"
+#include "base/debug/leak_annotations.h"
 #include "brave/components/brave_shields/content/browser/ad_block_engine.h"
 #include "brave/components/brave_shields/core/browser/ad_block_resource_provider.h"
 #include "brave/components/brave_shields/core/browser/ad_block_service_helper.h"
@@ -37,7 +38,9 @@ AdBlockEngineWrapper::AdBlockEngineWrapper(
     std::unique_ptr<AdBlockEngine> additional_engine)
     : default_engine_(std::move(default_engine)),
       additional_filters_engine_(std::move(additional_engine)) {
-  DETACH_FROM_SEQUENCE(sequence_checker_);
+  // `this` is stored using SequenceBound, so false-positive shutdown leaks
+  // are expected
+  ANNOTATE_LEAKING_OBJECT_PTR(this);
 }
 
 AdBlockEngineWrapper::~AdBlockEngineWrapper() = default;
