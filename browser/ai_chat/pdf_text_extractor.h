@@ -15,7 +15,7 @@
 #include "base/functional/callback.h"
 #include "base/memory/weak_ptr.h"
 #include "base/timer/timer.h"
-#include "content/public/browser/web_contents_delegate.h"
+#include "brave/components/restricted_web_contents_delegate/restricted_web_contents_delegate.h"
 #include "content/public/browser/web_contents_observer.h"
 
 namespace content {
@@ -36,7 +36,7 @@ namespace ai_chat {
 //       Writes bytes to a temp file first (e.g. from drag-and-drop).
 //
 // The extractor should be kept alive until the callback fires.
-class PdfTextExtractor : public content::WebContentsDelegate,
+class PdfTextExtractor : public RestrictedWebContentsDelegate,
                          public content::WebContentsObserver {
  public:
   using ExtractTextCallback =
@@ -59,26 +59,6 @@ class PdfTextExtractor : public content::WebContentsDelegate,
                    ExtractTextCallback callback);
 
  private:
-  // content::WebContentsDelegate:
-  bool ShouldSuppressDialogs(content::WebContents* source) override;
-  void CanDownload(const GURL& url,
-                   const std::string& request_method,
-                   base::OnceCallback<void(bool)> callback) override;
-  bool IsWebContentsCreationOverridden(
-      content::RenderFrameHost* opener,
-      content::SiteInstance* source_site_instance,
-      content::mojom::WindowContainerType window_container_type,
-      const GURL& opener_url,
-      const std::string& frame_name,
-      const GURL& target_url) override;
-  bool CanEnterFullscreenModeForTab(
-      content::RenderFrameHost* requesting_frame) override;
-  bool CanDragEnter(content::WebContents* source,
-                    const content::DropData& data,
-                    blink::DragOperationsMask operations_allowed) override;
-  void RequestKeyboardLock(content::WebContents* web_contents,
-                           bool esc_key_locked) override;
-
   // content::WebContentsObserver:
   void DidFinishLoad(content::RenderFrameHost* render_frame_host,
                      const GURL& validated_url) override;

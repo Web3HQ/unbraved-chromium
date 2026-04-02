@@ -86,7 +86,7 @@ static_library("ai_chat") {
       "pdf_text_extractor.cc",
       "pdf_text_extractor.h",
     ]
-    public_deps = [ "//content/public/browser" ]
+    public_deps = [ "//brave/components/restricted_web_contents_delegate" ]
     deps += [
       "//components/pdf/browser",
       "//net",

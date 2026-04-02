@@ -13,6 +13,7 @@ static_library("content") {
 
   deps = [
     "//brave/components/local_ai/core",
+    "//brave/components/restricted_web_contents_delegate",
     "//content/public/browser",
     "//services/network/public/cpp",
     "//ui/base",

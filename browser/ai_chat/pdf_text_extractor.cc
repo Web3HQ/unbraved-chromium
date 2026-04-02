@@ -86,45 +86,6 @@ void PdfTextExtractor::ExtractText(content::BrowserContext* browser_context,
                      weak_ptr_factory_.GetWeakPtr(), browser_context));
 }
 
-// content::WebContentsDelegate:
-
-bool PdfTextExtractor::ShouldSuppressDialogs(content::WebContents* source) {
-  return true;
-}
-
-void PdfTextExtractor::CanDownload(const GURL& url,
-                                   const std::string& request_method,
-                                   base::OnceCallback<void(bool)> callback) {
-  std::move(callback).Run(false);
-}
-
-bool PdfTextExtractor::IsWebContentsCreationOverridden(
-    content::RenderFrameHost* opener,
-    content::SiteInstance* source_site_instance,
-    content::mojom::WindowContainerType window_container_type,
-    const GURL& opener_url,
-    const std::string& frame_name,
-    const GURL& target_url) {
-  return true;
-}
-
-bool PdfTextExtractor::CanEnterFullscreenModeForTab(
-    content::RenderFrameHost* requesting_frame) {
-  return false;
-}
-
-bool PdfTextExtractor::CanDragEnter(
-    content::WebContents* source,
-    const content::DropData& data,
-    blink::DragOperationsMask operations_allowed) {
-  return false;
-}
-
-void PdfTextExtractor::RequestKeyboardLock(content::WebContents* web_contents,
-                                           bool esc_key_locked) {
-  web_contents->GotResponseToKeyboardLockRequest(false);
-}
-
 // content::WebContentsObserver:
 
 void PdfTextExtractor::DidFinishLoad(
