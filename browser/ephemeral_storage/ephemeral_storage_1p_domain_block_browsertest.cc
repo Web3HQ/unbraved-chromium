@@ -49,10 +49,11 @@ class EphemeralStorage1pDomainBlockBrowserTest
 
     brave_shields::AdBlockService* ad_block_service =
         g_brave_browser_process->ad_block_service();
-    source_provider_->RegisterAsSourceProvider(ad_block_service);
-
     EngineTestObserver engine_observer(ad_block_service,
                                        true /* is_default_engine */);
+
+    source_provider_->RegisterAsSourceProvider(ad_block_service);
+
     engine_observer.Wait();
   }
 

@@ -219,11 +219,11 @@ void AdBlockServiceTest::AddNewRules(const std::string& rules,
       rules, first_party_protections, permission_mask);
   brave_shields::AdBlockService* ad_block_service =
       g_brave_browser_process->ad_block_service();
+  EngineTestObserver engine_observer(
+      ad_block_service, first_party_protections /* is_default_engine */);
   source_provider->RegisterAsSourceProvider(ad_block_service);
   source_providers_.push_back(std::move(source_provider));
 
-  EngineTestObserver engine_observer(
-      ad_block_service, first_party_protections /* is_default_engine */);
   engine_observer.Wait();
 }
 
@@ -280,6 +280,7 @@ void AdBlockServiceTest::UpdateAdBlockInstanceWithRules(
 
   brave_shields::AdBlockService* service =
       g_brave_browser_process->ad_block_service();
+  EngineTestObserver engine_observer(service, true /* is_default_engine */);
 
   auto& component_providers =
       component_service_manager()->component_filters_providers();
@@ -289,7 +290,6 @@ void AdBlockServiceTest::UpdateAdBlockInstanceWithRules(
   EXPECT_TRUE(provider);
   provider->OnComponentReady(component_path);
 
-  EngineTestObserver engine_observer(service, true /* is_default_engine */);
   engine_observer.Wait();
 }
 
@@ -302,10 +302,10 @@ void AdBlockServiceTest::UpdateCustomAdBlockInstanceWithRules(
     const std::string& rules) {
   brave_shields::AdBlockService* ad_block_service =
       g_brave_browser_process->ad_block_service();
-  ad_block_service->custom_filters_provider()->UpdateCustomFilters(rules);
-
   EngineTestObserver engine_observer(ad_block_service,
                                      false /* is_default_engine */);
+  ad_block_service->custom_filters_provider()->UpdateCustomFilters(rules);
+
   engine_observer.Wait();
 }
 
@@ -362,13 +362,14 @@ void AdBlockServiceTest::InstallComponent(
     auto& component_providers =
         component_service_manager()->component_filters_providers();
 
+    EngineTestObserver engine_observer(
+        g_brave_browser_process->ad_block_service(),
+        catalog_entry.first_party_protections /* is_default_engine */);
+
     auto& provider = component_providers.at(catalog_entry.uuid);
     EXPECT_TRUE(provider);
     provider->OnComponentReady(component_path);
 
-    EngineTestObserver engine_observer(
-        g_brave_browser_process->ad_block_service(),
-        catalog_entry.first_party_protections /* is_default_engine */);
     engine_observer.Wait();
   }
 }

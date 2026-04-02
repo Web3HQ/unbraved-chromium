@@ -176,14 +176,14 @@ class DebounceBrowserTest : public BaseLocalDataFilesBrowserTest {
   }
 
   void InitAdBlockForDebounce() {
+    EngineTestObserver engine_observer(
+        g_brave_browser_process->ad_block_service(),
+        true /* is_default_engine */);
     auto source_provider =
         std::make_unique<brave_shields::TestFiltersProvider>("||blocked.com^");
     source_provider->RegisterAsSourceProvider(
         g_brave_browser_process->ad_block_service());
     source_providers_.push_back(std::move(source_provider));
-    EngineTestObserver engine_observer(
-        g_brave_browser_process->ad_block_service(),
-        true /* is_default_engine */);
     engine_observer.Wait();
   }
 

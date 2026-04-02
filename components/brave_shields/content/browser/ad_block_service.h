@@ -128,7 +128,7 @@ class AdBlockService {
   }
 
   // Call a callback on the task runner with the engine wrapper and post the
-  // result to UI thread.
+  // result back to the calling sequence (current default task runner).
   template <typename T>
   void AsyncCallAndReplyWithResult(
       base::OnceCallback<T(AdBlockEngineWrapper* wrapper)> task,
