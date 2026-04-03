@@ -133,3 +133,94 @@ struct ManagePasswordDetailReadOnlyView: View {
     }
   }
 }
+
+struct ManagePasswordDetailAddEditView: View {
+  @Binding var isPasswordRevealed: Bool
+
+  @State private(set) var site: String = ""
+  @State private(set) var username: String = ""
+  @State private(set) var passwordValue: String = ""
+
+  var password: CWVPassword? {
+    didSet {
+      if let password {
+        site = password.site
+        username = password.username ?? ""
+        passwordValue = password.password ?? ""
+      }
+    }
+  }
+
+  var body: some View {
+    Form {
+      Section {
+        LabeledContent {
+          TextField("", text: $site)
+            .textContentType(.URL)
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
+            .accessibilityLabel(Strings.Login.loginInfoDetailsWebsiteFieldTitle)
+            .foregroundStyle(Color(braveSystemName: .textSecondary))
+        } label: {
+          Text(Strings.Login.loginInfoDetailsWebsiteFieldTitle)
+            .foregroundStyle(Color(braveSystemName: .textPrimary))
+        }
+        .listRowBackground(Color(.secondaryBraveGroupedBackground))
+
+        LabeledContent {
+          TextField("", text: $username)
+            .textContentType(.username)
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
+            .accessibilityLabel(Strings.Login.loginInfoDetailsUsernameFieldTitle)
+            .foregroundStyle(Color(braveSystemName: .textSecondary))
+        } label: {
+          Text(Strings.Login.loginInfoDetailsUsernameFieldTitle)
+            .foregroundStyle(Color(braveSystemName: .textPrimary))
+        }
+        .listRowBackground(Color(.secondaryBraveGroupedBackground))
+
+        LabeledContent {
+          HStack(spacing: 8) {
+            Group {
+              if isPasswordRevealed {
+                TextField(
+                  Strings.Autofill.managePasswordDetailInputPasswordPlaceholder,
+                  text: $passwordValue
+                )
+                .textContentType(.password)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .accessibilityLabel(Strings.Login.loginInfoDetailsPasswordFieldTitle)
+              } else {
+                SecureField(
+                  Strings.Autofill.managePasswordDetailInputPasswordPlaceholder,
+                  text: $passwordValue
+                )
+                .textContentType(.password)
+                .accessibilityLabel(Strings.Login.loginInfoDetailsPasswordFieldTitle)
+              }
+            }
+            .foregroundStyle(Color(braveSystemName: .textSecondary))
+
+            Button {
+              isPasswordRevealed.toggle()
+            } label: {
+              Label(
+                Strings.Autofill.managePasswordDetailRevealPassword,
+                braveSystemImage: isPasswordRevealed ? "leo.eye.on" : "leo.eye.off"
+              )
+              .foregroundStyle(Color(braveSystemName: .iconInteractive))
+              .labelStyle(.iconOnly)
+            }
+            .buttonStyle(.plain)
+          }
+        } label: {
+          Text(Strings.Login.loginInfoDetailsPasswordFieldTitle)
+            .foregroundStyle(Color(braveSystemName: .textPrimary))
+        }
+        .listRowBackground(Color(.secondaryBraveGroupedBackground))
+      }
+    }
+  }
+}
