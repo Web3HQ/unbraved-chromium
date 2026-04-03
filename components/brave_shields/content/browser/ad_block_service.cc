@@ -347,8 +347,12 @@ void AdBlockService::OnDatCached(bool is_default_engine,
                                  bool success) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (success) {
-    local_state_->SetTime(cache_timestamp_pref_name(is_default_engine),
-                          timestamp);
+    if (!local_state_) {
+      CHECK_IS_TEST();
+    } else {
+      local_state_->SetTime(cache_timestamp_pref_name(is_default_engine),
+                            timestamp);
+    }
   }
   for (auto& observer : observers_) {
     observer.OnFilterListLoaded(is_default_engine, success);
@@ -435,6 +439,10 @@ void AdBlockService::SetupDiscardPolicy(
 
 bool AdBlockService::ShouldLoadFilterState(bool is_default_engine,
                                            base::Time timestamp) {
+  if (!local_state_) {
+    CHECK_IS_TEST();
+    return true;
+  }
   base::Time cache_timestamp =
       local_state_->GetTime(cache_timestamp_pref_name(is_default_engine));
 
