@@ -65,6 +65,7 @@ void AdBlockFiltersProviderManager::ForceNotifyObserver(
     observer.OnChanged(is_for_default_engine, timestamp.value());
   }
 }
+
 std::string AdBlockFiltersProviderManager::GetNameForDebugging() {
   return "AdBlockFiltersProviderManager";
 }
