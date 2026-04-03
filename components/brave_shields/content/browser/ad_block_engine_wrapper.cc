@@ -20,7 +20,6 @@
 #include "base/strings/strcat.h"
 #include "base/trace_event/trace_event.h"
 #include "base/values.h"
-#include "brave/components/brave_component_updater/browser/dat_file_util.h"
 #include "brave/components/brave_shields/content/browser/ad_block_engine.h"
 #include "brave/components/brave_shields/core/browser/ad_block_resource_provider.h"
 #include "brave/components/brave_shields/core/browser/ad_block_service_helper.h"
