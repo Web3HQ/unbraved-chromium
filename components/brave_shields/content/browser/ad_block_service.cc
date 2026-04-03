@@ -263,7 +263,7 @@ AdBlockService::AdBlockService(
   default_service_observer_ = std::make_unique<SourceProviderObserver>(
       make_on_resources_loaded_callback, resource_provider_.get(),
       filters_provider_manager_.get(),
-      base::BindRepeating(should_load_filter_state_callback, false), true,
+      base::BindRepeating(should_load_filter_state_callback, true), true,
       task_runner_);
   additional_filters_service_observer_ =
       std::make_unique<SourceProviderObserver>(
