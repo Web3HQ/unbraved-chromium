@@ -16,8 +16,8 @@
 #include "base/location.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/run_loop.h"
-#include "base/test/run_until.h"
 #include "base/test/bind.h"
+#include "base/test/run_until.h"
 #include "base/test/task_environment.h"
 #include "base/test/test_mock_time_task_runner.h"
 #include "brave/components/brave_shields/content/browser/ad_block_custom_filters_provider.h"
@@ -330,9 +330,9 @@ TEST_F(AdBlockServiceTest,
   provider->set_timestamp(now);
   provider->RegisterAsSourceProvider(service.get());
 
-  ASSERT_TRUE(base::test::RunUntil(
-      [&]() { return default_filter_list_loaded; }))
-      << "Timeout waiting for default engine filter set to load";
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return default_filter_list_loaded;
+  })) << "Timeout waiting for default engine filter set to load";
 
   // The default engine must have loaded the filter set rules.
   auto result = service->GetDefaultEngineForTesting().ShouldStartRequest(
