@@ -32,7 +32,7 @@ OBJC_EXPORT
 
 /// Listen to downloaded version changes of filter lists
 - (void)registerFilterListChanges:(void (^)(bool isDefaultEngine,
-                                            base::Time timestamp))callback;
+                                            NSDate* timestamp))callback;
 
 /// Listen to downloaded version changes of the filter list catalog
 - (void)registerCatalogChanges:(void (^)())callback;

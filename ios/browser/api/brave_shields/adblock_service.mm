@@ -29,7 +29,7 @@
 
 namespace brave_shields {
 using OnFilterListUpdatedCallback =
-    base::RepeatingCallback<void(bool is_default_engine, base::Time timestamp)>;
+    base::RepeatingCallback<void(bool is_default_engine, NSDate* timestamp)>;
 using OnFilterListCatalogLoadedCallback = base::RepeatingCallback<void()>;
 using OnResourceUpdatedCallback = base::RepeatingCallback<void()>;
 
@@ -51,7 +51,7 @@ AdBlockServiceObserver::AdBlockServiceObserver(
 
 void AdBlockServiceObserver::OnChanged(bool is_default_engine,
                                        base::Time timestamp) {
-  updated_callback_.Run(is_default_engine, std::move(timestamp));
+  updated_callback_.Run(is_default_engine, std::move(timestamp).ToNSDate());
 }
 
 class AdBlockCatalogObserver
@@ -144,7 +144,7 @@ void AdBlockResourceObserver::OnResourcesLoaded(
 }
 
 - (void)registerFilterListChanges:(void (^)(bool isDefaultEngine,
-                                            base::Time timestamp))callback {
+                                            NSDate* timestamp))callback {
   auto _serviceObserver =
       std::make_unique<brave_shields::AdBlockServiceObserver>(
           base::BindRepeating(callback));
