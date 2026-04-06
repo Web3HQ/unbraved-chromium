@@ -1,6 +1,7 @@
 include_rules = [
   "+brave/services/printing/public/mojom",
   "+brave/components/text_recognition/common",
+  "+third_party/blink/public/strings",
 ]
 
 specific_include_rules = {
