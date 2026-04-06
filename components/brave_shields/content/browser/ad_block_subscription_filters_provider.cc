@@ -120,7 +120,7 @@ void AdBlockSubscriptionFiltersProvider::OnListAvailable(bool force_new) {
 }
 
 base::Time AdBlockSubscriptionFiltersProvider::timestamp() const {
-  return base::Time();
+  return last_modified_;
 }
 
 }  // namespace brave_shields

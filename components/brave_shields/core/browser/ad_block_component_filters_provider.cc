@@ -19,7 +19,9 @@
 #include "brave/components/brave_shields/core/browser/ad_block_filters_provider.h"
 #include "brave/components/brave_shields/core/browser/ad_block_filters_provider_manager.h"
 #include "brave/components/brave_shields/core/browser/filter_list_catalog_entry.h"
+#include "brave/components/brave_shields/core/common/pref_names.h"
 #include "components/component_updater/component_updater_service.h"
+#include "components/prefs/pref_service.h"
 
 constexpr char kListFile[] = "list.txt";
 
@@ -61,11 +63,13 @@ AdBlockComponentFiltersProvider::AdBlockComponentFiltersProvider(
     std::string base64_public_key,
     std::string title,
     uint8_t permission_mask,
+    PrefService* local_state,
     bool is_default_engine)
     : AdBlockFiltersProvider(is_default_engine, manager),
       component_id_(component_id),
       permission_mask_(permission_mask),
-      component_updater_service_(cus) {
+      component_updater_service_(cus),
+      local_state_(local_state) {
   // Can be nullptr in unit tests
   if (cus) {
     TRACE_EVENT("brave.adblock", "AdBlockComponentFiltersProvider::Register",
@@ -86,6 +90,7 @@ AdBlockComponentFiltersProvider::AdBlockComponentFiltersProvider(
     component_updater::ComponentUpdateService* cus,
     AdBlockFiltersProviderManager* manager,
     const FilterListCatalogEntry& catalog_entry,
+    PrefService* local_state,
     bool is_default_engine)
     : AdBlockComponentFiltersProvider(cus,
                                       manager,
@@ -93,6 +98,7 @@ AdBlockComponentFiltersProvider::AdBlockComponentFiltersProvider(
                                       catalog_entry.base64_public_key,
                                       catalog_entry.title,
                                       catalog_entry.permission_mask,
+                                      local_state,
                                       is_default_engine) {}
 
 AdBlockComponentFiltersProvider::~AdBlockComponentFiltersProvider() {}
@@ -111,6 +117,8 @@ void AdBlockComponentFiltersProvider::OnGetNewPathFileInfo(
   component_path_ = path;
   last_updated_ = info.last_modified;
 
+  local_state_->SetTime(prefs::kAdBlockComponentFiltersCacheTimestamp,
+                        last_updated_);
   NotifyObservers(engine_is_default_, last_updated_);
 
   if (!old_path.empty()) {
@@ -144,7 +152,7 @@ bool AdBlockComponentFiltersProvider::IsInitialized() const {
 }
 
 base::Time AdBlockComponentFiltersProvider::timestamp() const {
-  return last_updated_;
+  return local_state_->GetTime(prefs::kAdBlockComponentFiltersCacheTimestamp);
 }
 
 base::FilePath AdBlockComponentFiltersProvider::GetFilterSetPath() {
