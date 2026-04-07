@@ -676,13 +676,20 @@ extension BrowserViewController {
     userAgentForType type: UserAgentType,
     request: URLRequest
   ) -> String? {
+    let logSource =
+      "tab(_:userAgentForType:request:) - request.mainDocumentURL=\(request.mainDocumentURL?.absoluteString ?? "nil") - type=\(type)"
     if !Preferences.Debug.userAgentOverride.value.isEmpty {
+      let log = "\(logSource) - returning userAgentOverride"
+      DebugLogger.log(for: .userAgent, text: log)
       return Preferences.Debug.userAgentOverride.value
     }
     let isBraveAllowedInUA =
       request.mainDocumentURL.flatMap {
         tab.braveUserAgentExceptions?.canShowBrave($0)
       } ?? true
+    var log =
+      "\(logSource) - isBraveAllowedInUA=\(isBraveAllowedInUA)"
+    DebugLogger.log(for: .userAgent, text: log)
 
     let mobile: String
     let desktop: String
@@ -719,8 +726,16 @@ extension BrowserViewController {
       return traitCollection.userInterfaceIdiom == .pad
         && profileController.defaultHostContentSettings.defaultPageMode == .desktop
         ? desktop : mobile
-    case .desktop: return desktop
-    case .mobile: return mobile
+    case .desktop:
+      log =
+        "\(logSource) - isBraveAllowedInUA=\(isBraveAllowedInUA) - returning desktop=\(desktop)"
+      DebugLogger.log(for: .userAgent, text: log)
+      return desktop
+    case .mobile:
+      log =
+        "\(logSource) - isBraveAllowedInUA=\(isBraveAllowedInUA) - returning mobile=\(mobile)"
+      DebugLogger.log(for: .userAgent, text: log)
+      return mobile
     }
   }
 

@@ -1477,6 +1477,17 @@ class SettingsViewController: TableViewController {
           cellClass: MultilineValue1Cell.self
         ),
         Row(
+          text: "User Agent Debug",
+          selection: { [unowned self] in
+            self.navigationController?.pushViewController(
+              DebugLogViewController(type: .userAgent),
+              animated: true
+            )
+          },
+          accessory: .disclosureIndicator,
+          cellClass: MultilineValue1Cell.self
+        ),
+        Row(
           text: "Secure Content State Debug",
           selection: { [unowned self] in
             self.navigationController?.pushViewController(
