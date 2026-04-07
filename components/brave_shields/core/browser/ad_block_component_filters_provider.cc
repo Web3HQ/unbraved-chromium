@@ -159,7 +159,7 @@ std::string AdBlockComponentFiltersProvider::GetCacheKey() const {
   return base::StrCat(
       {prefs::kAdBlockComponentFiltersCacheTimestamp, ".", component_id_});
 }
-base::Time AdBlockComponentFiltersProvider::timestamp() const {
+base::Time AdBlockComponentFiltersProvider::GetTimestamp() const {
   const auto& dict =
       local_state_->GetDict(prefs::kAdBlockComponentFiltersCacheTimestamp);
   auto* value = dict.Find(component_id_);

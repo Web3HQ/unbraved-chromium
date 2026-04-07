@@ -92,7 +92,7 @@ std::string AdBlockSubscriptionFiltersProvider::GetCacheKey() const {
   return list_file_.BaseName().RemoveExtension().MaybeAsASCII();
 }
 
-base::Time AdBlockSubscriptionFiltersProvider::timestamp() const {
+base::Time AdBlockSubscriptionFiltersProvider::GetTimestamp() const {
   if (!local_state_) {
     CHECK_IS_TEST();
     return base::Time::Now();

@@ -31,24 +31,24 @@ TEST_F(AdBlockCustomFiltersProviderTest, TimestampUpdatedOnFilterChange) {
   brave_shields::AdBlockCustomFiltersProvider provider(&prefs_, nullptr);
 
   // Initially timestamp should be unset.
-  EXPECT_EQ(provider.timestamp(), base::Time());
+  EXPECT_EQ(provider.GetTimestamp(), base::Time());
 
   provider.UpdateCustomFilters("||example.com^");
 
   // After update, timestamp should be recent (not zero).
-  EXPECT_NE(provider.timestamp(), base::Time());
-  EXPECT_LE(provider.timestamp(), base::Time::Now());
+  EXPECT_NE(provider.GetTimestamp(), base::Time());
+  EXPECT_LE(provider.GetTimestamp(), base::Time::Now());
 }
 
 TEST_F(AdBlockCustomFiltersProviderTest, TimestampAdvancesOnSubsequentUpdates) {
   brave_shields::AdBlockCustomFiltersProvider provider(&prefs_, nullptr);
 
   provider.UpdateCustomFilters("||first.com^");
-  base::Time first_timestamp = provider.timestamp();
+  base::Time first_timestamp = provider.GetTimestamp();
   ASSERT_NE(first_timestamp, base::Time());
 
   provider.UpdateCustomFilters("||second.com^");
-  base::Time second_timestamp = provider.timestamp();
+  base::Time second_timestamp = provider.GetTimestamp();
 
   EXPECT_GE(second_timestamp, first_timestamp);
 }
@@ -74,7 +74,7 @@ TEST_F(AdBlockCustomFiltersProviderTest,
 
   EXPECT_TRUE(observer.notified);
   EXPECT_NE(observer.last_timestamp, base::Time());
-  EXPECT_EQ(observer.last_timestamp, provider.timestamp());
+  EXPECT_EQ(observer.last_timestamp, provider.GetTimestamp());
 
   provider.RemoveObserver(&observer);
 }

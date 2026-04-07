@@ -56,8 +56,8 @@ void AdBlockFiltersProviderManager::ForceNotifyObserver(
                                 : additional_engine_filters_providers_;
   std::optional<base::Time> timestamp;
   for (auto*& provider : filters_providers) {
-    if (provider->IsInitialized() && provider->timestamp() > timestamp) {
-      timestamp = provider->timestamp();
+    if (provider->IsInitialized() && provider->GetTimestamp() > timestamp) {
+      timestamp = provider->GetTimestamp();
     }
   }
 
@@ -125,7 +125,7 @@ void RunAllResults(
   }
 }
 
-base::Time AdBlockFiltersProviderManager::timestamp() const {
+base::Time AdBlockFiltersProviderManager::GetTimestamp() const {
   NOTREACHED();
 }
 

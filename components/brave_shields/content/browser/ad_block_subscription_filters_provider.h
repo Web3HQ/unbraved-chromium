@@ -50,7 +50,7 @@ class AdBlockSubscriptionFiltersProvider : public AdBlockFiltersProvider {
 
   void OnListAvailable();
 
-  base::Time timestamp() const override;
+  base::Time GetTimestamp() const override;
 
  private:
   void OnDATFileDataReady(

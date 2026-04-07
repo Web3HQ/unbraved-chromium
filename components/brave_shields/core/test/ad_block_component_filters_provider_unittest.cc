@@ -106,8 +106,8 @@ TEST_F(AdBlockComponentFiltersProviderTest,
 
   EXPECT_NE(ts_a, base::Time());
   EXPECT_NE(ts_b, base::Time());
-  EXPECT_EQ(ts_a, provider_a.timestamp());
-  EXPECT_EQ(ts_b, provider_b.timestamp());
+  EXPECT_EQ(ts_a, provider_a.GetTimestamp());
+  EXPECT_EQ(ts_b, provider_b.GetTimestamp());
 
   // Updating component A should not change component B's timestamp.
   base::Time original_ts_b = ts_b;

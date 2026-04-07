@@ -78,7 +78,7 @@ class AdBlockComponentFiltersProvider : public AdBlockFiltersProvider {
 
   bool IsInitialized() const override;
 
-  base::Time timestamp() const override;
+  base::Time GetTimestamp() const override;
 
  private:
   friend class ::AdBlockComponentFiltersProviderTest;
