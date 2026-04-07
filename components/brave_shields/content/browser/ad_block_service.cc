@@ -494,6 +494,8 @@ void RegisterPrefsForAdBlockService(PrefRegistrySimple* registry) {
                              base::Time());
   registry->RegisterDictionaryPref(
       prefs::kAdBlockComponentFiltersCacheTimestamp);
+  registry->RegisterDictionaryPref(
+      prefs::kAdBlockSubscriptionFiltersCacheTimestamp);
 }
 
 void RegisterPrefsForAdBlockServiceForMigration(PrefRegistrySimple* registry) {

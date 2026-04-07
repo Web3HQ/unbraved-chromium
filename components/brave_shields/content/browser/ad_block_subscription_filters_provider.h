@@ -8,7 +8,9 @@
 
 #include <string>
 
+#include "base/files/file.h"
 #include "base/functional/callback.h"
+#include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/time/time.h"
 #include "base/trace_event/trace_event.h"
@@ -46,7 +48,7 @@ class AdBlockSubscriptionFiltersProvider : public AdBlockFiltersProvider {
       base::OnceCallback<void(
           base::OnceCallback<void(rust::Box<adblock::FilterSet>*)>)>) override;
 
-  void OnListAvailable(bool force_new);
+  void OnListAvailable();
 
   base::Time timestamp() const override;
 
@@ -59,11 +61,12 @@ class AdBlockSubscriptionFiltersProvider : public AdBlockFiltersProvider {
 
   std::string GetNameForDebugging() override;
 
-  void CacheTimestampAndNotifyObservers(bool engine_is_default,
-                                        base::Time timestamp);
+  void OnGetFileInfo(base::File::Info info);
+
+  std::string GetCachePrefPath() const;
 
   base::FilePath list_file_;
-  base::Time last_modified_;
+  const raw_ptr<PrefService> local_state_;
 
   base::RepeatingCallback<void(const adblock::FilterListMetadata&)>
       on_metadata_retrieved_;

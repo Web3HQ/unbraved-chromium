@@ -34,6 +34,8 @@ inline constexpr char kAdBlockAdditionalCacheTimestamp[] =
     "brave.ad_block.cache.engine1";
 inline constexpr char kAdBlockComponentFiltersCacheTimestamp[] =
     "brave.ad_block.cache.component_filters";
+inline constexpr char kAdBlockSubscriptionFiltersCacheTimestamp[] =
+    "brave.ad_block.cache.subscription_filters";
 
 inline constexpr char kFBEmbedControlType[] = "brave.fb_embed_default";
 inline constexpr char kTwitterEmbedControlType[] =
