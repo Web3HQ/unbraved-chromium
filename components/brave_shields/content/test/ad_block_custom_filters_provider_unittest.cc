@@ -8,9 +8,9 @@
 #include <string>
 
 #include "base/time/time.h"
-#include "components/prefs/pref_registry_simple.h"
 #include "brave/components/brave_shields/core/browser/ad_block_filters_provider.h"
 #include "brave/components/brave_shields/core/common/pref_names.h"
+#include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/testing_pref_service.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -40,8 +40,7 @@ TEST_F(AdBlockCustomFiltersProviderTest, TimestampUpdatedOnFilterChange) {
   EXPECT_LE(provider.timestamp(), base::Time::Now());
 }
 
-TEST_F(AdBlockCustomFiltersProviderTest,
-       TimestampAdvancesOnSubsequentUpdates) {
+TEST_F(AdBlockCustomFiltersProviderTest, TimestampAdvancesOnSubsequentUpdates) {
   brave_shields::AdBlockCustomFiltersProvider provider(&prefs_, nullptr);
 
   provider.UpdateCustomFilters("||first.com^");
