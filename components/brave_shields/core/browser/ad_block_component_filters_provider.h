@@ -26,6 +26,7 @@ namespace base {
 class FilePath;
 }
 
+class AdBlockComponentFiltersProviderTest;
 class AdBlockServiceTest;
 class DebounceBrowserTest;
 class PrefService;
@@ -80,6 +81,7 @@ class AdBlockComponentFiltersProvider : public AdBlockFiltersProvider {
   base::Time timestamp() const override;
 
  private:
+  friend class ::AdBlockComponentFiltersProviderTest;
   friend class ::AdBlockServiceTest;
   friend class ::DebounceBrowserTest;
 
