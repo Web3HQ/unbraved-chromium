@@ -139,7 +139,7 @@ void AdBlockComponentFiltersProvider::OnComponentReady(
       perfetto::TerminatingFlow::FromPointer(this), "path", path.value());
 
   base::ThreadPool::PostTaskAndReplyWithResult(
-      FROM_HERE, {base::TaskPriority::BEST_EFFORT, base::MayBlock()},
+      FROM_HERE, {base::TaskPriority::USER_BLOCKING, base::MayBlock()},
       base::BindOnce(
           [](const base::FilePath& path) {
             base::File::Info info;
