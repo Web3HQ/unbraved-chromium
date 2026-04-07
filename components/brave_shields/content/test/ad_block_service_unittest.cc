@@ -341,6 +341,114 @@ TEST_F(AdBlockServiceTest,
   EXPECT_TRUE(result.matched);
 }
 
+TEST_F(AdBlockServiceTest, FutureCacheTimestampAllowsReload) {
+  // A cache timestamp in the future (e.g. clock skew) should not permanently
+  // block filter set loading — ShouldLoadFilterState has a guard for this.
+  base::Time future = base::Time::Now() + base::Hours(24);
+  prefs_.SetTime(prefs::kAdBlockDefaultCacheTimestamp, future);
+
+  auto service = CreateService();
+
+  bool default_filter_list_loaded = false;
+  FilterListObserver observer(
+      base::BindLambdaForTesting([&](bool is_default, bool success) {
+        if (is_default) {
+          default_filter_list_loaded = success;
+        }
+      }));
+  service->AddObserver(&observer);
+
+  auto provider =
+      std::make_unique<TestFiltersProvider>("||after-future-cache.com^",
+                                            /*engine_is_default=*/true);
+  provider->RegisterAsSourceProvider(service.get());
+
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return default_filter_list_loaded;
+  })) << "Timeout: future cache timestamp blocked filter set loading";
+
+  auto result = service->GetDefaultEngineForTesting().ShouldStartRequest(
+      GURL("https://after-future-cache.com/script.js"),
+      blink::mojom::ResourceType::kScript, "test.com", false, false, false);
+  EXPECT_TRUE(result.matched);
+}
+
+TEST_F(AdBlockServiceTest, ValidCacheTimestampSkipsFilterSetLoad) {
+  // When cache timestamp matches the provider's timestamp, filter set loading
+  // should be skipped (ShouldLoadFilterState returns false).
+  base::Time now = base::Time::Now();
+  prefs_.SetTime(prefs::kAdBlockDefaultCacheTimestamp, now);
+
+  // Create a cached DAT file so the engine has rules from cache.
+  CreateCachedDefaultDATFile("||from-cache.com^\n");
+
+  auto service = CreateService();
+
+  DATLoadObserver dat_observer;
+  service->AddObserver(&dat_observer);
+
+  // Register a provider with a timestamp that matches the cache — this should
+  // be skipped by ShouldLoadFilterState.
+  auto provider = std::make_unique<TestFiltersProvider>(
+      "||from-filter-set.com^", /*engine_is_default=*/true);
+  provider->set_timestamp(now);
+  provider->RegisterAsSourceProvider(service.get());
+
+  // Wait for DAT loading to complete.
+  ASSERT_TRUE(
+      base::test::RunUntil([&]() { return dat_observer.BothLoaded(); }));
+
+  // The cached DAT rules should be active (loaded from cache).
+  auto result = service->GetDefaultEngineForTesting().ShouldStartRequest(
+      GURL("https://from-cache.com/script.js"),
+      blink::mojom::ResourceType::kScript, "test.com", false, false, false);
+  EXPECT_TRUE(result.matched);
+
+  // The filter set rules should NOT be active (loading was skipped).
+  result = service->GetDefaultEngineForTesting().ShouldStartRequest(
+      GURL("https://from-filter-set.com/script.js"),
+      blink::mojom::ResourceType::kScript, "test.com", false, false, false);
+  EXPECT_FALSE(result.matched);
+}
+
+TEST_F(AdBlockServiceTest, NewerProviderTimestampOverridesCache) {
+  // When a provider fires with a timestamp newer than the cache, the filter
+  // set should be loaded even though a valid cache exists.
+  base::Time old_time = base::Time::Now() - base::Hours(2);
+  base::Time new_time = base::Time::Now();
+  prefs_.SetTime(prefs::kAdBlockDefaultCacheTimestamp, old_time);
+
+  // Create a cached DAT file with old rules.
+  CreateCachedDefaultDATFile("||old-cached-rule.com^\n");
+
+  auto service = CreateService();
+
+  bool default_filter_list_loaded = false;
+  FilterListObserver observer(
+      base::BindLambdaForTesting([&](bool is_default, bool success) {
+        if (is_default) {
+          default_filter_list_loaded = success;
+        }
+      }));
+  service->AddObserver(&observer);
+
+  // Register a provider with a newer timestamp than the cache.
+  auto provider = std::make_unique<TestFiltersProvider>(
+      "||new-filter-rule.com^", /*engine_is_default=*/true);
+  provider->set_timestamp(new_time);
+  provider->RegisterAsSourceProvider(service.get());
+
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return default_filter_list_loaded;
+  })) << "Timeout: newer provider timestamp should have triggered reload";
+
+  // The new filter set rules should be active, not the old cache.
+  auto result = service->GetDefaultEngineForTesting().ShouldStartRequest(
+      GURL("https://new-filter-rule.com/script.js"),
+      blink::mojom::ResourceType::kScript, "test.com", false, false, false);
+  EXPECT_TRUE(result.matched);
+}
+
 TEST_F(AdBlockServiceQueuedTest, FilterSetLoadingBlocksDATLoading) {
   // Create cached DAT files with specific rules for the default engine.
   CreateCachedDATFiles("||blocked-by-dat.com^\n", "");
