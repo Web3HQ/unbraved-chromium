@@ -401,44 +401,6 @@ TEST_F(AdBlockServiceTest, FutureCacheTimestampAllowsReload) {
   EXPECT_TRUE(result.matched);
 }
 
-TEST_F(AdBlockServiceTest, ValidCacheTimestampSkipsFilterSetLoad) {
-  // When cache timestamp matches the provider's timestamp, filter set loading
-  // should be skipped (ShouldLoadFilterState returns false).
-  base::Time now = base::Time::Now();
-  prefs_.SetTime(prefs::kAdBlockDefaultCacheTimestamp, now);
-
-  // Create a cached DAT file so the engine has rules from cache.
-  CreateCachedDefaultDATFile("||from-cache.com^\n");
-
-  auto service = CreateService();
-
-  DATLoadObserver dat_observer;
-  service->AddObserver(&dat_observer);
-
-  // Register a provider with a timestamp that matches the cache — this should
-  // be skipped by ShouldLoadFilterState.
-  auto provider = std::make_unique<TestFiltersProvider>(
-      "||from-filter-set.com^", /*engine_is_default=*/true);
-  provider->set_timestamp(now);
-  provider->RegisterAsSourceProvider(service.get());
-
-  // Wait for DAT loading to complete.
-  ASSERT_TRUE(
-      base::test::RunUntil([&]() { return dat_observer.BothLoaded(); }));
-
-  // The cached DAT rules should be active (loaded from cache).
-  auto result = service->GetDefaultEngineForTesting().ShouldStartRequest(
-      GURL("https://from-cache.com/script.js"),
-      blink::mojom::ResourceType::kScript, "test.com", false, false, false);
-  EXPECT_TRUE(result.matched);
-
-  // The filter set rules should NOT be active (loading was skipped).
-  result = service->GetDefaultEngineForTesting().ShouldStartRequest(
-      GURL("https://from-filter-set.com/script.js"),
-      blink::mojom::ResourceType::kScript, "test.com", false, false, false);
-  EXPECT_FALSE(result.matched);
-}
-
 TEST_F(AdBlockServiceTest, NewerProviderTimestampOverridesCache) {
   // When a provider fires with a timestamp newer than the cache, the filter
   // set should be loaded even though a valid cache exists.
@@ -594,6 +556,64 @@ TEST_F(AdBlockServiceQueuedTest, FilterSetLoadingBlocksDATLoading) {
   // set allow_load_dat_loading_ = false before DAT callback ran.
   result = service->GetDefaultEngineForTesting().ShouldStartRequest(
       GURL("https://blocked-by-dat.com/script.js"),
+      blink::mojom::ResourceType::kScript, "test.com", false, false, false);
+  EXPECT_FALSE(result.matched);
+}
+
+TEST_F(AdBlockServiceQueuedTest, ValidCacheTimestampSkipsFilterSetLoad) {
+  // When cache timestamp matches the provider's timestamp, filter set loading
+  // should be skipped (ShouldLoadFilterState returns false).
+  // This test requires queued execution to ensure the DAT loads before the
+  // filter set provider is registered.
+  base::Time now = base::Time::Now();
+  prefs_.SetTime(prefs::kAdBlockDefaultCacheTimestamp, now);
+  prefs_.SetTime(prefs::kAdBlockAdditionalCacheTimestamp, now);
+
+  CreateCachedDefaultDATFile("||from-cache.com^\n");
+
+  auto service_task_runner =
+      base::MakeRefCounted<base::TestMockTimeTaskRunner>();
+  auto service = CreateServiceWithTaskRunner(service_task_runner);
+
+  // Let the DAT loading complete first.
+  task_environment_.RunUntilIdle();
+  while (service_task_runner->HasPendingTask()) {
+    service_task_runner->FastForwardBy(
+        service_task_runner->NextPendingTaskDelay());
+    base::RunLoop().RunUntilIdle();
+  }
+  base::RunLoop().RunUntilIdle();
+
+  // The cached DAT rules should now be loaded.
+  auto result = service->GetDefaultEngineForTesting().ShouldStartRequest(
+      GURL("https://from-cache.com/script.js"),
+      blink::mojom::ResourceType::kScript, "test.com", false, false, false);
+  EXPECT_TRUE(result.matched);
+
+  // Now register a provider with a timestamp matching the cache.
+  // ShouldLoadFilterState should return false, skipping the filter set load.
+  auto provider = std::make_unique<TestFiltersProvider>(
+      "||from-filter-set.com^", /*engine_is_default=*/true);
+  provider->set_timestamp(now);
+  provider->RegisterAsSourceProvider(service.get());
+
+  // Drain any remaining tasks.
+  while (service_task_runner->HasPendingTask()) {
+    service_task_runner->FastForwardBy(
+        service_task_runner->NextPendingTaskDelay());
+    base::RunLoop().RunUntilIdle();
+  }
+  base::RunLoop().RunUntilIdle();
+
+  // Cached DAT rules should still be active.
+  result = service->GetDefaultEngineForTesting().ShouldStartRequest(
+      GURL("https://from-cache.com/script.js"),
+      blink::mojom::ResourceType::kScript, "test.com", false, false, false);
+  EXPECT_TRUE(result.matched);
+
+  // Filter set rules should NOT be active (loading was skipped).
+  result = service->GetDefaultEngineForTesting().ShouldStartRequest(
+      GURL("https://from-filter-set.com/script.js"),
       blink::mojom::ResourceType::kScript, "test.com", false, false, false);
   EXPECT_FALSE(result.matched);
 }
