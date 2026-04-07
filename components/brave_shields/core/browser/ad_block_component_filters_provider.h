@@ -85,7 +85,7 @@ class AdBlockComponentFiltersProvider : public AdBlockFiltersProvider {
 
   void OnComponentReady(const base::FilePath&);
   void OnGetNewPathFileInfo(base::FilePath path, base::File::Info info);
-
+  std::string GetCachePrefPath() const;
   base::FilePath component_path_;
   base::Time last_updated_;
   std::string component_id_;

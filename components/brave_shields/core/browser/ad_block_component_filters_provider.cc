@@ -13,6 +13,7 @@
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/rand_util.h"
+#include "base/strings/strcat.h"
 #include "base/task/thread_pool.h"
 #include "base/trace_event/trace_event.h"
 #include "brave/components/brave_shields/core/browser/ad_block_component_installer.h"
@@ -117,8 +118,7 @@ void AdBlockComponentFiltersProvider::OnGetNewPathFileInfo(
   component_path_ = path;
   last_updated_ = info.last_modified;
 
-  local_state_->SetTime(prefs::kAdBlockComponentFiltersCacheTimestamp,
-                        last_updated_);
+  local_state_->SetTime(GetCachePrefPath(), last_updated_);
   NotifyObservers(engine_is_default_, last_updated_);
 
   if (!old_path.empty()) {
@@ -151,8 +151,12 @@ bool AdBlockComponentFiltersProvider::IsInitialized() const {
   return !component_path_.empty();
 }
 
+std::string AdBlockComponentFiltersProvider::GetCachePrefPath() const {
+  return base::StrCat(
+      {prefs::kAdBlockComponentFiltersCacheTimestamp, ".", component_id_});
+}
 base::Time AdBlockComponentFiltersProvider::timestamp() const {
-  return local_state_->GetTime(prefs::kAdBlockComponentFiltersCacheTimestamp);
+  return local_state_->GetTime(GetCachePrefPath());
 }
 
 base::FilePath AdBlockComponentFiltersProvider::GetFilterSetPath() {
