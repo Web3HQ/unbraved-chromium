@@ -63,7 +63,7 @@ class AdBlockSubscriptionFiltersProvider : public AdBlockFiltersProvider {
 
   void OnGetFileInfo(base::File::Info info);
 
-  std::string GetCachePrefPath() const;
+  std::string GetCacheKey() const;
 
   base::FilePath list_file_;
   const raw_ptr<PrefService> local_state_;

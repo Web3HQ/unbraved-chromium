@@ -9,7 +9,7 @@
 
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
-#include "base/strings/strcat.h"
+#include "base/json/values_util.h"
 #include "base/test/run_until.h"
 #include "base/test/task_environment.h"
 #include "base/time/time.h"
@@ -39,12 +39,6 @@ class TimestampObserver
   base::Time last_timestamp_;
 };
 
-std::string CachePrefPath(const std::string& component_id) {
-  return base::StrCat(
-      {brave_shields::prefs::kAdBlockComponentFiltersCacheTimestamp, ".",
-       component_id});
-}
-
 }  // namespace
 
 class AdBlockComponentFiltersProviderTest : public testing::Test {
@@ -52,8 +46,8 @@ class AdBlockComponentFiltersProviderTest : public testing::Test {
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     ASSERT_TRUE(temp_dir2_.CreateUniqueTempDir());
-    RegisterComponentPref("component_a");
-    RegisterComponentPref("component_b");
+    prefs_.registry()->RegisterDictionaryPref(
+        brave_shields::prefs::kAdBlockComponentFiltersCacheTimestamp);
   }
 
   static void SimulateComponentReady(
@@ -63,9 +57,14 @@ class AdBlockComponentFiltersProviderTest : public testing::Test {
   }
 
  protected:
-  void RegisterComponentPref(const std::string& component_id) {
-    prefs_.registry()->RegisterTimePref(CachePrefPath(component_id),
-                                        base::Time());
+  base::Time GetCachedTimestamp(const std::string& component_id) {
+    const auto& dict = prefs_.GetDict(
+        brave_shields::prefs::kAdBlockComponentFiltersCacheTimestamp);
+    auto* value = dict.Find(component_id);
+    if (value) {
+      return base::ValueToTime(value).value_or(base::Time());
+    }
+    return base::Time();
   }
 
   base::test::TaskEnvironment task_environment_;
@@ -102,8 +101,8 @@ TEST_F(AdBlockComponentFiltersProviderTest,
   ASSERT_TRUE(base::test::RunUntil([&]() { return observer_b.notified(); }));
 
   // Each component should have its own timestamp in its own pref.
-  base::Time ts_a = prefs_.GetTime(CachePrefPath("component_a"));
-  base::Time ts_b = prefs_.GetTime(CachePrefPath("component_b"));
+  base::Time ts_a = GetCachedTimestamp("component_a");
+  base::Time ts_b = GetCachedTimestamp("component_b");
 
   EXPECT_NE(ts_a, base::Time());
   EXPECT_NE(ts_b, base::Time());
@@ -117,7 +116,7 @@ TEST_F(AdBlockComponentFiltersProviderTest,
   SimulateComponentReady(provider_a, temp_dir_.GetPath());
   ASSERT_TRUE(base::test::RunUntil([&]() { return observer_a.notified(); }));
 
-  EXPECT_EQ(prefs_.GetTime(CachePrefPath("component_b")), original_ts_b);
+  EXPECT_EQ(GetCachedTimestamp("component_b"), original_ts_b);
 
   provider_a.RemoveObserver(&observer_a);
   provider_b.RemoveObserver(&observer_b);

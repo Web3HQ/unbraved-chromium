@@ -11,6 +11,7 @@
 #include "base/check_is_test.h"
 #include "base/files/file.h"
 #include "base/files/file_util.h"
+#include "base/json/values_util.h"
 #include "base/logging.h"
 #include "base/strings/strcat.h"
 #include "base/task/sequenced_task_runner.h"
@@ -20,6 +21,7 @@
 #include "brave/components/brave_shields/core/common/adblock/rs/src/lib.rs.h"
 #include "brave/components/brave_shields/core/common/pref_names.h"
 #include "components/prefs/pref_service.h"
+#include "components/prefs/scoped_user_pref_update.h"
 
 namespace brave_shields {
 
@@ -79,23 +81,29 @@ void AdBlockSubscriptionFiltersProvider::OnGetFileInfo(base::File::Info info) {
   if (!local_state_) {
     CHECK_IS_TEST();
   } else {
-    local_state_->SetTime(GetCachePrefPath(), info.last_modified);
+    ScopedDictPrefUpdate update(
+        local_state_, prefs::kAdBlockSubscriptionFiltersCacheTimestamp);
+    update->Set(GetCacheKey(), base::TimeToValue(info.last_modified));
   }
   NotifyObservers(engine_is_default_, info.last_modified);
 }
 
-std::string AdBlockSubscriptionFiltersProvider::GetCachePrefPath() const {
-  return base::StrCat({prefs::kAdBlockSubscriptionFiltersCacheTimestamp, ".",
-                       list_file_.BaseName().RemoveExtension().MaybeAsASCII()});
+std::string AdBlockSubscriptionFiltersProvider::GetCacheKey() const {
+  return list_file_.BaseName().RemoveExtension().MaybeAsASCII();
 }
 
 base::Time AdBlockSubscriptionFiltersProvider::timestamp() const {
   if (!local_state_) {
     CHECK_IS_TEST();
     return base::Time::Now();
-  } else {
-    return local_state_->GetTime(GetCachePrefPath());
   }
+  const auto& dict =
+      local_state_->GetDict(prefs::kAdBlockSubscriptionFiltersCacheTimestamp);
+  auto* value = dict.Find(GetCacheKey());
+  if (value) {
+    return base::ValueToTime(value).value_or(base::Time());
+  }
+  return base::Time();
 }
 
 void AdBlockSubscriptionFiltersProvider::OnDATFileDataReady(

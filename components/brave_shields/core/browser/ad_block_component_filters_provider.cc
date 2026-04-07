@@ -12,6 +12,7 @@
 #include "base/files/file.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
+#include "base/json/values_util.h"
 #include "base/rand_util.h"
 #include "base/strings/strcat.h"
 #include "base/task/thread_pool.h"
@@ -23,6 +24,7 @@
 #include "brave/components/brave_shields/core/common/pref_names.h"
 #include "components/component_updater/component_updater_service.h"
 #include "components/prefs/pref_service.h"
+#include "components/prefs/scoped_user_pref_update.h"
 
 constexpr char kListFile[] = "list.txt";
 
@@ -118,7 +120,9 @@ void AdBlockComponentFiltersProvider::OnGetNewPathFileInfo(
   component_path_ = path;
   last_updated_ = info.last_modified;
 
-  local_state_->SetTime(GetCachePrefPath(), last_updated_);
+  ScopedDictPrefUpdate update(local_state_,
+                              prefs::kAdBlockComponentFiltersCacheTimestamp);
+  update->Set(component_id_, base::TimeToValue(last_updated_));
   NotifyObservers(engine_is_default_, last_updated_);
 
   if (!old_path.empty()) {
@@ -151,12 +155,18 @@ bool AdBlockComponentFiltersProvider::IsInitialized() const {
   return !component_path_.empty();
 }
 
-std::string AdBlockComponentFiltersProvider::GetCachePrefPath() const {
+std::string AdBlockComponentFiltersProvider::GetCacheKey() const {
   return base::StrCat(
       {prefs::kAdBlockComponentFiltersCacheTimestamp, ".", component_id_});
 }
 base::Time AdBlockComponentFiltersProvider::timestamp() const {
-  return local_state_->GetTime(GetCachePrefPath());
+  const auto& dict =
+      local_state_->GetDict(prefs::kAdBlockComponentFiltersCacheTimestamp);
+  auto* value = dict.Find(component_id_);
+  if (value) {
+    return base::ValueToTime(value).value_or(base::Time());
+  }
+  return base::Time();
 }
 
 base::FilePath AdBlockComponentFiltersProvider::GetFilterSetPath() {
