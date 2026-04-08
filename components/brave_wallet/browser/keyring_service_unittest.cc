@@ -34,6 +34,7 @@
 #include "brave/components/brave_wallet/browser/bitcoin/bitcoin_test_utils.h"
 #include "brave/components/brave_wallet/browser/blockchain_registry.h"
 #include "brave/components/brave_wallet/browser/brave_wallet_constants.h"
+#include "brave/components/brave_wallet/browser/brave_wallet_hidden_accounts_permissions_revoker.h"
 #include "brave/components/brave_wallet/browser/brave_wallet_service.h"
 #include "brave/components/brave_wallet/browser/brave_wallet_utils.h"
 #include "brave/components/brave_wallet/browser/ethereum_keyring.h"
@@ -162,6 +163,21 @@ class TestKeyringServiceObserver : public mojom::KeyringServiceObserver {
   raw_ptr<base::test::TaskEnvironment> task_environment_;
 };
 
+class MockHiddenAccountsPermissionsRevoker
+    : public BraveWalletHiddenAccountsPermissionsRevoker {
+ public:
+  explicit MockHiddenAccountsPermissionsRevoker(
+      BraveWalletServiceDelegate& delegate)
+      : BraveWalletHiddenAccountsPermissionsRevoker(delegate) {}
+  ~MockHiddenAccountsPermissionsRevoker() override = default;
+
+  MOCK_METHOD(void,
+              RevokeHiddenAccountPermisson,
+              (const mojom::AccountIdPtr& account_id,
+               base::OnceCallback<void(bool)> callback),
+              (override));
+};
+
 class KeyringServiceUnitTest : public testing::Test {
  public:
   KeyringServiceUnitTest()
@@ -273,18 +289,38 @@ class KeyringServiceUnitTest : public testing::Test {
     return success;
   }
 
+  static std::vector<std::string> GetHiddenAccounts(KeyringService* service) {
+    std::vector<std::string> account_unique_keys;
+    base::test::TestFuture<std::vector<mojom::AccountInfoPtr>> future;
+    service->GetHiddenAccounts(future.GetCallback());
+    auto accounts = future.Take();
+    account_unique_keys.clear();
+    for (const auto& account : accounts) {
+      account_unique_keys.push_back(account->account_id->unique_key);
+    }
+    return account_unique_keys;
+  }
+
+  static bool AddHiddenAccount(KeyringService* service,
+                               mojom::AccountIdPtr account_id) {
+    base::test::TestFuture<bool> future;
+    service->AddHiddenAccount(std::move(account_id), future.GetCallback());
+    return future.Get();
+  }
+
+  static bool RemoveHiddenAccount(KeyringService* service,
+                                  mojom::AccountIdPtr account_id) {
+    base::test::TestFuture<bool> future;
+    service->RemoveHiddenAccount(std::move(account_id), future.GetCallback());
+    return future.Get();
+  }
+
   static bool RemoveAccount(KeyringService* service,
                             const mojom::AccountIdPtr& account_id,
                             const std::string& password) {
-    bool success;
-    base::RunLoop run_loop;
-    service->RemoveAccount(account_id.Clone(), password,
-                           base::BindLambdaForTesting([&](bool v) {
-                             success = v;
-                             run_loop.Quit();
-                           }));
-    run_loop.Run();
-    return success;
+    base::test::TestFuture<bool> future;
+    service->RemoveAccount(account_id.Clone(), password, future.GetCallback());
+    return future.Get();
   }
 
   static std::optional<std::string> EncodePrivateKeyForExport(
@@ -3074,6 +3110,145 @@ TEST_F(KeyringServiceUnitTest, SetAccountName_HardwareAccounts) {
   account_infos = GetAccountUtils(&service).AllFilTestAccounts();
   EXPECT_FALSE(account_infos[0]->address.empty());
   EXPECT_EQ(account_infos[0]->name, "filecoin testnet 1 changed");
+}
+
+TEST_F(KeyringServiceUnitTest, HiddenAccounts) {
+  KeyringService service(json_rpc_service(), GetPrefs(), GetLocalState());
+  NiceMock<TestKeyringServiceObserver> observer(service, task_environment_);
+  auto permissions_delegate = TestBraveWalletServiceDelegate::Create();
+  auto revoker =
+      std::make_unique<NiceMock<MockHiddenAccountsPermissionsRevoker>>(
+          *permissions_delegate);
+  auto* revoker_ptr = revoker.get();
+  service.InitializeHiddenAccountPermissionRevoker(std::move(revoker));
+  EXPECT_CALL(*revoker_ptr, RevokeHiddenAccountPermisson(_, _))
+      .Times(2)
+      .WillRepeatedly([&](const mojom::AccountIdPtr&,
+                          base::OnceCallback<void(bool)> callback) {
+        std::move(callback).Run(true);
+      });
+  ASSERT_TRUE(CreateWallet(&service, "brave"));
+
+  auto account_id = GetAccountUtils(&service).EthAccountId(0);
+  // Test case: Hide a derived account.
+  {
+    auto hidden_accounts = GetHiddenAccounts(&service);
+    EXPECT_TRUE(hidden_accounts.empty());
+
+    EXPECT_CALL(observer, AccountsChanged());
+    EXPECT_TRUE(AddHiddenAccount(&service, account_id.Clone()));
+    observer.WaitAndVerify();
+
+    hidden_accounts = GetHiddenAccounts(&service);
+    EXPECT_THAT(hidden_accounts, ElementsAre(account_id->unique_key));
+    EXPECT_FALSE(std::ranges::any_of(
+        service.GetAllAccountsSync()->accounts, [&](const auto& account_info) {
+          return account_info->account_id->unique_key == account_id->unique_key;
+        }));
+  }
+
+  // Test case: Duplicate hide request is a no-op.
+  {
+    EXPECT_CALL(observer, AccountsChanged()).Times(0);
+    EXPECT_TRUE(AddHiddenAccount(&service, account_id.Clone()));
+    observer.WaitAndVerify();
+    EXPECT_THAT(GetHiddenAccounts(&service),
+                ElementsAre(account_id->unique_key));
+  }
+
+  // Test case: Imported account cannot be hidden.
+  {
+    EXPECT_CALL(observer, AccountsChanged());
+    auto imported_account = ImportEthereumAccount(
+        &service, "Imported account",
+        GenerateEthImportPayload("7d7dc5f71eb29dc58f8b07c4f962d01d12ca6a8f95fdb"
+                                 "0720fbc72d4c6f6cdd7"));
+    ASSERT_TRUE(imported_account);
+    observer.WaitAndVerify();
+
+    EXPECT_CALL(observer, AccountsChanged()).Times(0);
+    EXPECT_FALSE(
+        AddHiddenAccount(&service, imported_account->account_id.Clone()));
+    observer.WaitAndVerify();
+  }
+
+  // Test case: Hardware account cannot be hidden.
+  {
+    std::vector<mojom::HardwareWalletAccountPtr> new_accounts;
+    new_accounts.push_back(mojom::HardwareWalletAccount::New(
+        "0x111", "m/44'/60'/1'/0/0", "Ledger 1", mojom::HardwareVendor::kLedger,
+        "device1", mojom::KeyringId::kDefault));
+    EXPECT_CALL(observer, AccountsChanged());
+    auto hardware_accounts =
+        service.AddHardwareAccountsSync(std::move(new_accounts));
+    ASSERT_EQ(hardware_accounts.size(), 1u);
+    observer.WaitAndVerify();
+
+    EXPECT_CALL(observer, AccountsChanged()).Times(0);
+    EXPECT_FALSE(
+        AddHiddenAccount(&service, hardware_accounts[0]->account_id.Clone()));
+    observer.WaitAndVerify();
+  }
+
+  // Test case: Unknown account cannot be hidden.
+  {
+    auto unknown_account_id = GetAccountUtils(&service).EthUnkownAccountId();
+    EXPECT_CALL(observer, AccountsChanged()).Times(0);
+    EXPECT_FALSE(AddHiddenAccount(&service, std::move(unknown_account_id)));
+    observer.WaitAndVerify();
+  }
+
+  // Test case: Unhide a previously hidden account.
+  {
+    EXPECT_CALL(observer, AccountsChanged());
+    EXPECT_TRUE(RemoveHiddenAccount(&service, account_id.Clone()));
+    observer.WaitAndVerify();
+    EXPECT_TRUE(GetHiddenAccounts(&service).empty());
+    EXPECT_TRUE(std::ranges::any_of(
+        service.GetAllAccountsSync()->accounts, [&](const auto& account_info) {
+          return account_info->account_id->unique_key == account_id->unique_key;
+        }));
+  }
+
+  // Test case: Unhide absent account still succeeds and notifies observers.
+  {
+    EXPECT_CALL(observer, AccountsChanged());
+    EXPECT_TRUE(RemoveHiddenAccount(&service, account_id.Clone()));
+    observer.WaitAndVerify();
+    EXPECT_TRUE(GetHiddenAccounts(&service).empty());
+  }
+}
+
+TEST_F(KeyringServiceUnitTest, HiddenAccountFailsWhenPermissionRevokeFails) {
+  KeyringService service(json_rpc_service(), GetPrefs(), GetLocalState());
+  NiceMock<TestKeyringServiceObserver> observer(service, task_environment_);
+
+  auto permissions_delegate = TestBraveWalletServiceDelegate::Create();
+  auto revoker =
+      std::make_unique<NiceMock<MockHiddenAccountsPermissionsRevoker>>(
+          *permissions_delegate);
+  auto* revoker_ptr = revoker.get();
+  service.InitializeHiddenAccountPermissionRevoker(std::move(revoker));
+
+  EXPECT_CALL(*revoker_ptr, RevokeHiddenAccountPermisson(_, _))
+      .Times(1)
+      .WillOnce([&](const mojom::AccountIdPtr&,
+                    base::OnceCallback<void(bool)> callback) {
+        std::move(callback).Run(false);
+      });
+
+  ASSERT_TRUE(CreateWallet(&service, "brave"));
+
+  auto account_id = GetAccountUtils(&service).EthAccountId(0);
+  EXPECT_CALL(observer, AccountsChanged()).Times(0);
+  EXPECT_FALSE(AddHiddenAccount(&service, account_id.Clone()));
+  observer.WaitAndVerify();
+
+  EXPECT_TRUE(GetHiddenAccounts(&service).empty());
+  EXPECT_TRUE(std::ranges::any_of(
+      service.GetAllAccountsSync()->accounts, [&](const auto& account_info) {
+        return account_info->account_id->unique_key == account_id->unique_key;
+      }));
 }
 
 TEST_F(KeyringServiceUnitTest, SetDefaultKeyringHardwareAccountName) {

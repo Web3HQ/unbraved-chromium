@@ -43,6 +43,7 @@ class BitcoinHDKeyring;
 class BitcoinHardwareKeyring;
 class BitcoinImportKeyring;
 class CardanoHDKeyring;
+class BraveWalletHiddenAccountsPermissionsRevoker;
 class EthTransaction;
 class EthereumKeyring;
 class EthereumProviderImplUnitTest;
@@ -168,6 +169,14 @@ class KeyringService : public mojom::KeyringService {
   void SetAccountName(mojom::AccountIdPtr account_id,
                       const std::string& name,
                       SetAccountNameCallback callback) override;
+  void InitializeHiddenAccountPermissionRevoker(
+      std::unique_ptr<BraveWalletHiddenAccountsPermissionsRevoker> revoker);
+  void GetHiddenAccounts(GetHiddenAccountsCallback callback) override;
+  virtual std::vector<mojom::AccountInfoPtr> GetHiddenAccountsSync();
+  void AddHiddenAccount(mojom::AccountIdPtr account_id,
+                        AddHiddenAccountCallback callback) override;
+  void RemoveHiddenAccount(mojom::AccountIdPtr account_id,
+                           RemoveHiddenAccountCallback callback) override;
   void Reset(bool notify_observer = true);
   void SignTransactionByDefaultKeyring(const mojom::AccountIdPtr& account_id,
                                        EthTransaction* tx);
@@ -317,6 +326,9 @@ class KeyringService : public mojom::KeyringService {
   mojom::AccountInfoPtr GetSelectedSolanaDappAccount();
   mojom::AccountInfoPtr GetSelectedCardanoDappAccount();
   void MaybeFixAccountSelection();
+  void OnHiddenAccountPermissionsRevoked(mojom::AccountIdPtr account_id,
+                                         AddHiddenAccountCallback callback,
+                                         bool revoke_success);
 
  private:
   FRIEND_TEST_ALL_PREFIXES(KeyringServiceUnitTest, GetOrCreateNonceForKeyring);
@@ -499,6 +511,8 @@ class KeyringService : public mojom::KeyringService {
   raw_ptr<PrefService> profile_prefs_ = nullptr;
   raw_ptr<PrefService> local_state_ = nullptr;
   bool request_unlock_pending_ = false;
+  std::unique_ptr<BraveWalletHiddenAccountsPermissionsRevoker>
+      hidden_account_permission_revoker_;
 
   mojo::RemoteSet<mojom::KeyringServiceObserver> observers_;
   mojo::ReceiverSet<mojom::KeyringService> receivers_;

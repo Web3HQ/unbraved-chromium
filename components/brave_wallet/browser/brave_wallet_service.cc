@@ -20,6 +20,7 @@
 #include "brave/components/brave_wallet/browser/bitcoin/bitcoin_wallet_service.h"
 #include "brave/components/brave_wallet/browser/blockchain_registry.h"
 #include "brave/components/brave_wallet/browser/brave_wallet_constants.h"
+#include "brave/components/brave_wallet/browser/brave_wallet_hidden_accounts_permissions_revoker.h"
 #include "brave/components/brave_wallet/browser/brave_wallet_utils.h"
 #include "brave/components/brave_wallet/browser/eth_allowance_manager.h"
 #include "brave/components/brave_wallet/browser/json_rpc_service.h"
@@ -250,6 +251,9 @@ BraveWalletService::BraveWalletService(
 
   keyring_service_->AddObserver(
       keyring_observer_receiver_.BindNewPipeAndPassRemote());
+  keyring_service_->InitializeHiddenAccountPermissionRevoker(
+      std::make_unique<BraveWalletHiddenAccountsPermissionsRevoker>(
+          *delegate_));
 
   DCHECK(profile_prefs_);
 
