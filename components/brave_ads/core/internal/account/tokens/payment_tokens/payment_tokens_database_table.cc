@@ -156,7 +156,8 @@ void PaymentTokens::Delete(const PaymentTokenList& payment_tokens,
   std::vector<std::string> transaction_ids;
   transaction_ids.reserve(payment_tokens.size());
   for (const auto& payment_token : payment_tokens) {
-    transaction_ids.push_back("'" + payment_token.transaction_id + "'");
+    transaction_ids.push_back(base::ReplaceStringPlaceholders(
+        "'$1'", {payment_token.transaction_id}, nullptr));
   }
 
   mojom::DBTransactionInfoPtr mojom_db_transaction =

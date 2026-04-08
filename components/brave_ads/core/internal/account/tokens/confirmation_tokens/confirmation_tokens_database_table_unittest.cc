@@ -99,6 +99,39 @@ TEST_F(BraveAdsConfirmationTokensDatabaseTableTest, DeleteConfirmationToken) {
             confirmation_tokens);
 }
 
+TEST_F(BraveAdsConfirmationTokensDatabaseTableTest, DeleteConfirmationTokens) {
+  // Arrange
+  base::test::TestFuture<bool> save_test_future;
+  database_table_.Save(test::BuildConfirmationTokens(/*count=*/3),
+                       save_test_future.GetCallback());
+  ASSERT_TRUE(save_test_future.Take());
+
+  // Act
+  base::test::TestFuture<bool> delete_test_future;
+  database_table_.Delete(test::BuildConfirmationTokens(/*count=*/2),
+                         delete_test_future.GetCallback());
+  ASSERT_TRUE(delete_test_future.Take());
+
+  // Assert
+  base::test::TestFuture<bool, ConfirmationTokenList> get_all_test_future;
+  database_table_.GetAll(
+      get_all_test_future.GetCallback<bool, ConfirmationTokenList>());
+  const auto [success, confirmation_tokens] = get_all_test_future.Take();
+  EXPECT_TRUE(success);
+  EXPECT_EQ((ConfirmationTokenList{
+                test::BuildConfirmationTokens(/*count=*/3).back()}),
+            confirmation_tokens);
+}
+
+TEST_F(BraveAdsConfirmationTokensDatabaseTableTest,
+       DeleteEmptyConfirmationTokens) {
+  // Act & Assert
+  base::test::TestFuture<bool> delete_test_future;
+  database_table_.Delete(ConfirmationTokenList{},
+                         delete_test_future.GetCallback());
+  EXPECT_TRUE(delete_test_future.Take());
+}
+
 TEST_F(BraveAdsConfirmationTokensDatabaseTableTest,
        DoNotDeleteMissingConfirmationToken) {
   // Arrange

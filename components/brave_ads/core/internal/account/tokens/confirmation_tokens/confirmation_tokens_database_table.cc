@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <utility>
+#include <vector>
 
 #include "base/check.h"
 #include "base/functional/bind.h"
@@ -141,6 +142,41 @@ void ConfirmationTokens::Delete(const ConfirmationTokenInfo& confirmation_token,
       WHERE
         unblinded_token = '$2')",
           {kTableName, *unblinded_token_base64});
+
+  RunTransaction(FROM_HERE, std::move(mojom_db_transaction),
+                 std::move(callback));
+}
+
+void ConfirmationTokens::Delete(
+    const ConfirmationTokenList& confirmation_tokens,
+    ResultCallback callback) {
+  if (confirmation_tokens.empty()) {
+    return std::move(callback).Run(/*success=*/true);
+  }
+
+  std::vector<std::string> unblinded_tokens;
+  unblinded_tokens.reserve(confirmation_tokens.size());
+  for (const auto& confirmation_token : confirmation_tokens) {
+    const std::optional<std::string> unblinded_token_base64 =
+        confirmation_token.unblinded_token.EncodeBase64();
+    if (unblinded_token_base64) {
+      unblinded_tokens.push_back(base::ReplaceStringPlaceholders(
+          "'$1'", {*unblinded_token_base64}, nullptr));
+    }
+  }
+
+  if (unblinded_tokens.empty()) {
+    return std::move(callback).Run(/*success=*/true);
+  }
+
+  mojom::DBTransactionInfoPtr mojom_db_transaction =
+      mojom::DBTransactionInfo::New();
+  Execute(mojom_db_transaction, R"(
+      DELETE FROM
+        $1
+      WHERE
+        unblinded_token IN ($2))",
+          {kTableName, base::JoinString(unblinded_tokens, ", ")});
 
   RunTransaction(FROM_HERE, std::move(mojom_db_transaction),
                  std::move(callback));

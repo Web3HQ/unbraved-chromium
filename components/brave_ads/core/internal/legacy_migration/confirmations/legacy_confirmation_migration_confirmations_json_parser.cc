@@ -3,12 +3,20 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-#include "brave/components/brave_ads/core/internal/legacy_migration/confirmations/legacy_confirmation_migration_confirmations_json_reader_util.h"
+#include "brave/components/brave_ads/core/internal/legacy_migration/confirmations/legacy_confirmation_migration_confirmations_json_parser.h"
 
+#include <optional>
+#include <string_view>
+
+#include "base/json/json_reader.h"
 #include "base/json/values_util.h"
 #include "base/values.h"
 #include "brave/components/brave_ads/core/internal/account/confirmations/confirmation_info.h"
 #include "brave/components/brave_ads/core/internal/account/confirmations/confirmations_util.h"
+#include "brave/components/brave_ads/core/internal/common/challenge_bypass_ristretto/blinded_token.h"
+#include "brave/components/brave_ads/core/internal/common/challenge_bypass_ristretto/public_key.h"
+#include "brave/components/brave_ads/core/internal/common/challenge_bypass_ristretto/token.h"
+#include "brave/components/brave_ads/core/internal/common/challenge_bypass_ristretto/unblinded_token.h"
 #include "brave/components/brave_ads/core/public/account/confirmations/confirmation_type.h"
 #include "brave/components/brave_ads/core/public/ad_units/ad_type.h"
 
@@ -37,56 +45,50 @@ constexpr char kConfirmationUserDataKey[] = "user_data";
 std::optional<RewardInfo> ParseConfirmationReward(const base::DictValue& dict) {
   RewardInfo reward;
 
-  // Token
-  if (const auto* const value =
-          dict.FindString(kConfirmationRewardPaymentTokenKey)) {
-    reward.token = cbr::Token(*value);
-  } else {
+  const auto* const token = dict.FindString(kConfirmationRewardPaymentTokenKey);
+  if (!token) {
     return std::nullopt;
   }
+  reward.token = cbr::Token(*token);
 
-  // Blinded token
-  if (const auto* const value =
-          dict.FindString(kConfirmationRewardBlindedPaymentTokenKey)) {
-    reward.blinded_token = cbr::BlindedToken(*value);
-  } else {
+  const auto* const blinded_token =
+      dict.FindString(kConfirmationRewardBlindedPaymentTokenKey);
+  if (!blinded_token) {
     return std::nullopt;
   }
+  reward.blinded_token = cbr::BlindedToken(*blinded_token);
 
-  if (const auto* const unblinded_token_dict =
-          dict.FindDict(kConfirmationRewardTokenInfoKey)) {
-    // Unblinded token
-    if (const auto* const value = unblinded_token_dict->FindString(
-            kConfirmationRewardUnblindedTokenKey)) {
-      reward.unblinded_token = cbr::UnblindedToken(*value);
-    } else {
+  const auto* const unblinded_token_dict =
+      dict.FindDict(kConfirmationRewardTokenInfoKey);
+  if (unblinded_token_dict) {
+    const auto* const unblinded_token =
+        unblinded_token_dict->FindString(kConfirmationRewardUnblindedTokenKey);
+    if (!unblinded_token) {
       return std::nullopt;
     }
+    reward.unblinded_token = cbr::UnblindedToken(*unblinded_token);
 
-    // Public key
-    if (const auto* const value =
-            unblinded_token_dict->FindString(kConfirmationRewardPublicKeyKey)) {
-      reward.public_key = cbr::PublicKey(*value);
-    } else {
+    const auto* const public_key =
+        unblinded_token_dict->FindString(kConfirmationRewardPublicKeyKey);
+    if (!public_key) {
       return std::nullopt;
     }
+    reward.public_key = cbr::PublicKey(*public_key);
 
-    // Signature
-    if (const auto* const value =
-            unblinded_token_dict->FindString(kConfirmationRewardSignatureKey)) {
-      reward.signature = *value;
-    } else {
+    const auto* const signature =
+        unblinded_token_dict->FindString(kConfirmationRewardSignatureKey);
+    if (!signature) {
       return std::nullopt;
     }
+    reward.signature = *signature;
   }
 
-  // Credential
-  if (const auto* const value =
-          dict.FindString(kConfirmationRewardCredentialKey)) {
-    reward.credential_base64url = *value;
-  } else {
+  const auto* const credential =
+      dict.FindString(kConfirmationRewardCredentialKey);
+  if (!credential) {
     return std::nullopt;
   }
+  reward.credential_base64url = *credential;
 
   return reward;
 }
@@ -94,54 +96,48 @@ std::optional<RewardInfo> ParseConfirmationReward(const base::DictValue& dict) {
 std::optional<ConfirmationInfo> ParseConfirmation(const base::DictValue& dict) {
   ConfirmationInfo confirmation;
 
-  // Transaction id
-  if (const auto* const value =
-          dict.FindString(kConfirmationTransactionIdKey)) {
-    confirmation.transaction_id = *value;
-  } else {
+  const auto* const transaction_id =
+      dict.FindString(kConfirmationTransactionIdKey);
+  if (!transaction_id) {
     return std::nullopt;
   }
+  confirmation.transaction_id = *transaction_id;
 
-  // Creative instance id
-  if (const auto* const value =
-          dict.FindString(kConfirmationCreativeInstanceIdKey)) {
-    confirmation.creative_instance_id = *value;
-  } else {
+  const auto* const creative_instance_id =
+      dict.FindString(kConfirmationCreativeInstanceIdKey);
+  if (!creative_instance_id) {
     return std::nullopt;
   }
+  confirmation.creative_instance_id = *creative_instance_id;
 
-  // Type
-  if (const auto* const value = dict.FindString(kConfirmationTypeKey)) {
-    confirmation.type = ToMojomConfirmationType(*value);
-  } else {
+  const auto* const type = dict.FindString(kConfirmationTypeKey);
+  if (!type) {
     return std::nullopt;
   }
+  confirmation.type = ToMojomConfirmationType(*type);
 
-  // Ad type
-  if (const auto* const value = dict.FindString(kConfirmationAdTypeKey)) {
-    if (*value == "inline_content_ad" || *value == "promoted_content_ad") {
-      return std::nullopt;
-    }
-    confirmation.ad_type = ToMojomAdType(*value);
-  } else {
+  const auto* const ad_type = dict.FindString(kConfirmationAdTypeKey);
+  if (!ad_type) {
     return std::nullopt;
   }
-
-  // Created at
-  if (const auto* const value = dict.Find(kConfirmationCreatedAtKey)) {
-    confirmation.created_at = base::ValueToTime(value).value_or(base::Time());
-  } else {
+  if (*ad_type == "inline_content_ad" || *ad_type == "promoted_content_ad") {
     return std::nullopt;
   }
+  confirmation.ad_type = ToMojomAdType(*ad_type);
 
-  // User data
-  if (const auto* const value = dict.FindDict(kConfirmationUserDataKey)) {
-    confirmation.user_data.fixed = value->Clone();
-  } else {
+  const auto* const created_at = dict.Find(kConfirmationCreatedAtKey);
+  if (!created_at) {
     return std::nullopt;
   }
+  confirmation.created_at =
+      base::ValueToTime(created_at).value_or(base::Time());
 
-  // Reward
+  const auto* const user_data = dict.FindDict(kConfirmationUserDataKey);
+  if (!user_data) {
+    return std::nullopt;
+  }
+  confirmation.user_data.fixed = user_data->Clone();
+
   confirmation.reward = ParseConfirmationReward(dict);
 
   if (!IsValid(confirmation)) {
@@ -151,9 +147,7 @@ std::optional<ConfirmationInfo> ParseConfirmation(const base::DictValue& dict) {
   return confirmation;
 }
 
-}  // namespace
-
-std::optional<ConfirmationList> ParseConfirmations(
+std::optional<ConfirmationList> ParseConfirmationsFromDict(
     const base::DictValue& dict) {
   const auto* const confirmations_dict = dict.FindDict(kConfirmationsKey);
   if (!confirmations_dict) {
@@ -182,6 +176,18 @@ std::optional<ConfirmationList> ParseConfirmations(
   }
 
   return confirmations;
+}
+
+}  // namespace
+
+std::optional<ConfirmationList> ParseConfirmations(std::string_view json) {
+  std::optional<base::DictValue> dict =
+      base::JSONReader::ReadDict(json, base::JSON_PARSE_RFC);
+  if (!dict) {
+    return std::nullopt;
+  }
+
+  return ParseConfirmationsFromDict(*dict);
 }
 
 }  // namespace brave_ads::json::reader

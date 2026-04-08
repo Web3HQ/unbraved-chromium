@@ -33,6 +33,8 @@ class ConfirmationTokens final : public TableInterface {
 
   void Delete(const ConfirmationTokenInfo& confirmation_token,
               ResultCallback callback);
+  void Delete(const ConfirmationTokenList& confirmation_tokens,
+              ResultCallback callback);
   void DeleteAll(ResultCallback callback);
 
   void GetAll(GetConfirmationTokensCallback callback) const;

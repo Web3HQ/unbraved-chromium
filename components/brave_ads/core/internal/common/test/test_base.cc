@@ -15,6 +15,7 @@
 #include "base/functional/bind.h"
 #include "base/test/task_environment.h"
 #include "brave/components/brave_ads/core/internal/account/tokens/test/token_generator_mock.h"
+#include "brave/components/brave_ads/core/internal/account/tokens/token_state_manager.h"
 #include "brave/components/brave_ads/core/internal/account/wallet/test/wallet_test_util.h"
 #include "brave/components/brave_ads/core/internal/ads_client/ads_client_notifier_waiter.h"
 #include "brave/components/brave_ads/core/internal/common/test/file_path_test_util.h"
@@ -28,7 +29,6 @@
 #include "brave/components/brave_ads/core/internal/common/test/time_test_util.h"
 #include "brave/components/brave_ads/core/internal/database/database_manager.h"
 #include "brave/components/brave_ads/core/internal/deprecated/client/client_state_manager.h"
-#include "brave/components/brave_ads/core/internal/deprecated/confirmations/confirmation_state_manager.h"
 #include "brave/components/brave_ads/core/internal/global_state/global_state.h"
 #include "brave/components/brave_ads/core/public/ads.h"
 #include "brave/components/brave_ads/core/public/ads_constants.h"
@@ -165,15 +165,19 @@ void TestBase::FastForwardClockToNextPendingTask() {
   task_environment_.FastForwardBy(NextPendingTaskDelay());
 }
 
-base::TimeDelta TestBase::NextPendingTaskDelay() const {
+base::TimeDelta TestBase::NextPendingTaskDelay() {
+  FlushImmediateTasks();
+
   return task_environment_.NextMainThreadPendingTaskDelay();
 }
 
-size_t TestBase::GetPendingTaskCount() const {
+size_t TestBase::GetPendingTaskCount() {
+  FlushImmediateTasks();
+
   return task_environment_.GetPendingMainThreadTaskCount();
 }
 
-bool TestBase::HasPendingTasks() const {
+bool TestBase::HasPendingTasks() {
   return GetPendingTaskCount() > 0;
 }
 
@@ -277,6 +281,11 @@ void TestBase::MockDefaultAdsServiceState() const {
   GlobalState::GetInstance()->GetDatabaseManager().CreateOrOpen(
       base::BindOnce([](bool success) {
         ASSERT_TRUE(success) << "Failed to create or open database";
+
+        GlobalState::GetInstance()->GetTokenStateManager().LoadState(
+            base::BindOnce([](bool success) {
+              ASSERT_TRUE(success) << "Failed to load token state";
+            }));
       }));
 
   // TODO(https://github.com/brave/brave-browser/issues/39795): Transition away
@@ -284,13 +293,6 @@ void TestBase::MockDefaultAdsServiceState() const {
   GlobalState::GetInstance()->GetClientStateManager().LoadState(
       base::BindOnce([](bool success) {
         ASSERT_TRUE(success) << "Failed to load client state";
-      }));
-
-  // TODO(https://github.com/brave/brave-browser/issues/39795): Transition away
-  // from using JSON state to a more efficient data approach.
-  GlobalState::GetInstance()->GetConfirmationStateManager().LoadState(
-      Wallet(), base::BindOnce([](bool success) {
-        ASSERT_TRUE(success) << "Failed to load confirmation state";
       }));
 }
 
@@ -305,7 +307,7 @@ void TestBase::SetUpIntegrationTest() {
   // Must be called after `Ads` is instantiated but prior to `Initialize`.
   Mock();
 
-  ads_->Initialize(WalletAsPtr(),
+  ads_->Initialize(MojomWallet(),
                    base::BindOnce(&TestBase::SetUpIntegrationTestCallback,
                                   weak_factory_.GetWeakPtr()));
 
@@ -341,6 +343,16 @@ void TestBase::SetUpUnitTest() {
   MockDefaultAdsServiceState();
 
   NotifyPendingObservers();
+}
+
+void TestBase::FlushImmediateTasks() {
+  // `base::SequenceBound` always posts a completion reply to the calling
+  // sequence, even for fire-and-forget calls with `base::DoNothing`. Those
+  // replies arrive with a 0ms delay and must be flushed so that callers see
+  // only genuinely scheduled tasks.
+  if (task_environment_.NextMainThreadPendingTaskDelay().is_zero()) {
+    task_environment_.FastForwardBy(base::TimeDelta());
+  }
 }
 
 }  // namespace brave_ads::test

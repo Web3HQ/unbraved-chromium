@@ -7,11 +7,13 @@
 #define BRAVE_COMPONENTS_BRAVE_ADS_CORE_INTERNAL_ADS_IMPL_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include "base/memory/weak_ptr.h"
 #include "base/values.h"
 #include "brave/components/brave_ads/core/internal/account/tokens/token_generator_interface.h"
+#include "brave/components/brave_ads/core/internal/account/wallet/wallet_info.h"
 #include "brave/components/brave_ads/core/internal/global_state/global_state.h"
 #include "brave/components/brave_ads/core/mojom/brave_ads.mojom-forward.h"
 #include "brave/components/brave_ads/core/public/ads.h"
@@ -108,36 +110,24 @@ class AdsImpl final : public Ads {
                                    ToggleReactionCallback callback) override;
 
  private:
-  void CreateOrOpenDatabase(mojom::WalletInfoPtr mojom_wallet,
-                            InitializeCallback callback);
-  void CreateOrOpenDatabaseCallback(mojom::WalletInfoPtr mojom_wallet,
-                                    InitializeCallback callback,
-                                    bool success);
-
-  void MigrateStateCallback(mojom::WalletInfoPtr mojom_wallet,
-                            InitializeCallback callback,
-                            bool success);
+  void CreateOrOpenDatabase(InitializeCallback callback);
+  void CreateOrOpenDatabaseCallback(InitializeCallback callback, bool success);
 
   void FailedToInitialize(InitializeCallback callback);
-  void SuccessfullyInitialized(mojom::WalletInfoPtr mojom_wallet,
-                               InitializeCallback callback);
+  void SuccessfullyInitialized(InitializeCallback callback);
 
   // TODO(https://github.com/brave/brave-browser/issues/39795): Transition away
   // from using JSON state to a more efficient data approach.
-  void MigrateClientStateCallback(mojom::WalletInfoPtr mojom_wallet,
-                                  InitializeCallback callback,
-                                  bool success);
-  void LoadClientStateCallback(mojom::WalletInfoPtr mojom_wallet,
-                               InitializeCallback callback,
-                               bool success);
-  void MigrateConfirmationStateCallback(mojom::WalletInfoPtr mojom_wallet,
-                                        InitializeCallback callback,
+  void MigrateClientStateCallback(InitializeCallback callback, bool success);
+  void LoadClientStateCallback(InitializeCallback callback, bool success);
+  void MigrateConfirmationStateCallback(InitializeCallback callback,
                                         bool success);
-  void LoadConfirmationStateCallback(mojom::WalletInfoPtr mojom_wallet,
-                                     InitializeCallback callback,
-                                     bool success);
+  void LoadConfirmationStateCallback(InitializeCallback callback, bool success);
 
   bool is_initialized_ = false;
+
+  // Set on startup; `std::nullopt` when the user has not joined Brave Rewards.
+  std::optional<WalletInfo> wallet_;
 
   // TODO(https://github.com/brave/brave-browser/issues/37622): Deprecate global
   // state.
