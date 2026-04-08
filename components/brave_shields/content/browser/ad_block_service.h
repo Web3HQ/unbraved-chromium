@@ -203,7 +203,7 @@ class AdBlockService {
       std::unique_ptr<rust::Box<adblock::FilterSet>> filter_set,
       AdblockResourceStorageBox storage);
 
-  void NotifyOnDATLoaded(bool success, bool is_default_engine);
+  void NotifyOnDATLoaded(bool is_default_engine, bool success);
   void OnDatCached(bool is_default_engine, bool success);
   void OnReadCachedDATFiles(
       std::pair<std::optional<DATFileDataBuffer>,

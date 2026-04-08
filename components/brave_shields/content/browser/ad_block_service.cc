@@ -147,8 +147,9 @@ void AdBlockService::SourceProviderObserver::OnFilterSetCreated(
 
 void AdBlockService::SourceProviderObserver::OnResourcesLoaded(
     AdblockResourceStorageBox storage) {
-  on_resources_loaded_.Run(engine_is_default_, std::move(dat_),
-                           std::move(filter_set_), std::move(storage));
+  on_resources_loaded_.Run(
+      engine_is_default_, std::exchange(dat_, DATFileDataBuffer()),
+      std::exchange(filter_set_, nullptr), std::move(storage));
 }
 
 AdBlockComponentServiceManager* AdBlockService::component_service_manager() {
