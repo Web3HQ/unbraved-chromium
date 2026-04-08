@@ -616,9 +616,33 @@ TEST_F(AdBlockServiceQueuedTest, MatchingCacheHashSkipsFilterSetLoad) {
       blink::mojom::ResourceType::kScript, "test.com", false, false, false);
   EXPECT_TRUE(result.matched);
 
-  // Non-cached URLs should not be blocked (no spurious filter set loaded).
+  // Now register a new provider. Update the cache hash to match the new
+  // combined hash so ShouldLoadFilterState returns false (skip).
+  auto provider = std::make_unique<TestFiltersProvider>(
+      "||from-filter-set.com^", /*engine_is_default=*/true);
+  provider->RegisterAsSourceProvider(service.get());
+  prefs_.SetString(
+      prefs::kAdBlockDefaultCacheHash,
+      service->GetFiltersProviderManagerForTesting()->ComputeCombinedHash(
+          true));
+
+  // Drain tasks from the provider registration.
+  while (service_task_runner->HasPendingTask()) {
+    service_task_runner->FastForwardBy(
+        service_task_runner->NextPendingTaskDelay());
+    base::RunLoop().RunUntilIdle();
+  }
+  base::RunLoop().RunUntilIdle();
+
+  // Cached DAT rules should still be active.
   result = service->GetDefaultEngineForTesting().ShouldStartRequest(
-      GURL("https://not-in-cache.com/script.js"),
+      GURL("https://from-cache.com/script.js"),
+      blink::mojom::ResourceType::kScript, "test.com", false, false, false);
+  EXPECT_TRUE(result.matched);
+
+  // Filter set rules should NOT be active (loading was skipped).
+  result = service->GetDefaultEngineForTesting().ShouldStartRequest(
+      GURL("https://from-filter-set.com/script.js"),
       blink::mojom::ResourceType::kScript, "test.com", false, false, false);
   EXPECT_FALSE(result.matched);
 }
