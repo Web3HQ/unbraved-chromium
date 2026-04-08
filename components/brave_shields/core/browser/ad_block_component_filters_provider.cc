@@ -118,7 +118,11 @@ void AdBlockComponentFiltersProvider::OnGetNewPathFileInfo(
     base::File::Info info) {
   base::FilePath old_path = component_path_;
   component_path_ = path;
-  last_updated_ = info.last_modified;
+  // Use the file modification time for component updates (old_path non-empty),
+  // but use Now() for first initialization to ensure the engine rebuilds even
+  // if the cached DAT has a newer timestamp (e.g. list was toggled off then on).
+  last_updated_ =
+      old_path.empty() ? base::Time::Now() : info.last_modified;
 
   ScopedDictPrefUpdate update(local_state_,
                               prefs::kAdBlockComponentFiltersCacheTimestamp);
