@@ -5,12 +5,14 @@
 
 #include "brave/components/brave_shields/content/browser/ad_block_localhost_filters_provider.h"
 
+#include <string>
 #include <utility>
 #include <vector>
 
+#include "base/no_destructor.h"
+#include "base/strings/string_number_conversions.h"
 #include "base/task/single_thread_task_runner.h"
-#include "base/time/time.h"
-#include "brave/components/brave_component_updater/browser/dat_file_util.h"
+#include "crypto/sha2.h"
 
 namespace brave_shields {
 
@@ -37,7 +39,7 @@ void AddDATBufferToFilterSet(rust::Box<adblock::FilterSet>* filter_set) {
 AdBlockLocalhostFiltersProvider::AdBlockLocalhostFiltersProvider(
     AdBlockFiltersProviderManager* manager)
     : AdBlockFiltersProvider(true, manager) {
-  NotifyObservers(engine_is_default_, GetTimestamp());
+  NotifyObservers(engine_is_default_);
 }
 
 AdBlockLocalhostFiltersProvider::~AdBlockLocalhostFiltersProvider() = default;
@@ -46,11 +48,11 @@ std::string AdBlockLocalhostFiltersProvider::GetNameForDebugging() {
   return "AdBlockLocalhostFiltersProvider";
 }
 
-base::Time AdBlockLocalhostFiltersProvider::GetTimestamp() const {
-  // Note: if the hardcoded filters are ever updated, this timestamp will need
-  // to be updated to reflect the timestamp of the corresponding installed
-  // browser update
-  return base::Time() + base::Hours(1);
+std::string AdBlockLocalhostFiltersProvider::GetContentHash() const {
+  static const base::NoDestructor<std::string> hash(
+      base::HexEncode(crypto::SHA256HashString(std::string(
+          std::begin(kLocalhostBadfilters), std::end(kLocalhostBadfilters)))));
+  return *hash;
 }
 
 void AdBlockLocalhostFiltersProvider::LoadFilterSet(

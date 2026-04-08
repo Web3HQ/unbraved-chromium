@@ -9,11 +9,12 @@
 #include <utility>
 
 #include "base/check.h"
-#include "base/time/time.h"
+#include "base/strings/string_number_conversions.h"
 #include "brave/components/brave_component_updater/browser/dat_file_util.h"
 #include "brave/components/brave_shields/content/browser/ad_block_service.h"
 #include "brave/components/brave_shields/core/browser/ad_block_filters_provider.h"
 #include "brave/components/brave_shields/core/browser/ad_block_filters_provider_manager.h"
+#include "crypto/sha2.h"
 
 using brave_component_updater::DATFileDataBuffer;
 
@@ -72,18 +73,21 @@ void TestFiltersProvider::LoadFilterSet(
 void TestFiltersProvider::Initialize() {
   CHECK(!is_initialized_);
   is_initialized_ = true;
-  NotifyObservers(engine_is_default_, GetTimestamp());
+  if (content_hash_.empty()) {
+    content_hash_ = base::HexEncode(crypto::SHA256HashString(rules_));
+  }
+  NotifyObservers(engine_is_default_);
 }
 
 bool TestFiltersProvider::IsInitialized() const {
   return is_initialized_;
 }
 
-base::Time TestFiltersProvider::GetTimestamp() const {
-  if (timestamp_.is_null()) {
-    return base::Time::Now();
+std::string TestFiltersProvider::GetContentHash() const {
+  if (content_hash_.empty()) {
+    return base::HexEncode(crypto::SHA256HashString(rules_));
   }
-  return timestamp_;
+  return content_hash_;
 }
 
 }  // namespace brave_shields

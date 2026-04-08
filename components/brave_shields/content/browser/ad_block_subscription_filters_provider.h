@@ -8,11 +8,9 @@
 
 #include <string>
 
-#include "base/files/file.h"
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
-#include "base/time/time.h"
 #include "base/trace_event/trace_event.h"
 #include "brave/components/brave_component_updater/browser/dat_file_util.h"
 #include "brave/components/brave_shields/core/browser/ad_block_filters_provider.h"
@@ -50,7 +48,7 @@ class AdBlockSubscriptionFiltersProvider : public AdBlockFiltersProvider {
 
   void OnListAvailable();
 
-  base::Time GetTimestamp() const override;
+  std::string GetContentHash() const override;
 
  private:
   void OnDATFileDataReady(
@@ -61,11 +59,11 @@ class AdBlockSubscriptionFiltersProvider : public AdBlockFiltersProvider {
 
   std::string GetNameForDebugging() override;
 
-  void OnGetFileInfo(base::File::Info info);
-
+  void OnContentHashComputed(std::string content_hash);
   std::string GetCacheKey() const;
 
   base::FilePath list_file_;
+  std::string content_hash_;
   const raw_ptr<PrefService> local_state_;
 
   base::RepeatingCallback<void(const adblock::FilterListMetadata&)>

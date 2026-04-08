@@ -28,6 +28,12 @@ inline constexpr char kAdBlockRegionalFilters[] =
 inline constexpr char kAdBlockListSubscriptions[] =
     "brave.ad_block.list_subscriptions";
 inline constexpr char kAdBlockDeveloperMode[] = "brave.ad_block.developer_mode";
+inline constexpr char kAdBlockDefaultCacheHash[] =
+    "brave.ad_block.cache.engine0_hash";
+inline constexpr char kAdBlockAdditionalCacheHash[] =
+    "brave.ad_block.cache.engine1_hash";
+
+// Old timestamp prefs — kept for migration cleanup only.
 inline constexpr char kAdBlockDefaultCacheTimestamp[] =
     "brave.ad_block.cache.engine0";
 inline constexpr char kAdBlockAdditionalCacheTimestamp[] =

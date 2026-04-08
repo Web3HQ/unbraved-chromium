@@ -8,10 +8,9 @@
 
 #include <string>
 
-#include "base/files/file.h"
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
-#include "base/time/time.h"
+#include "base/memory/weak_ptr.h"
 #include "brave/components/brave_component_updater/browser/dat_file_util.h"
 #include "brave/components/brave_shields/core/browser/ad_block_filters_provider.h"
 #include "brave/components/brave_shields/core/browser/ad_block_filters_provider_manager.h"
@@ -78,7 +77,7 @@ class AdBlockComponentFiltersProvider : public AdBlockFiltersProvider {
 
   bool IsInitialized() const override;
 
-  base::Time GetTimestamp() const override;
+  std::string GetContentHash() const override;
 
  private:
   friend class ::AdBlockComponentFiltersProviderTest;
@@ -86,10 +85,11 @@ class AdBlockComponentFiltersProvider : public AdBlockFiltersProvider {
   friend class ::DebounceBrowserTest;
 
   void OnComponentReady(const base::FilePath&);
-  void OnGetNewPathFileInfo(base::FilePath path, base::File::Info info);
+  void OnContentHashComputed(base::FilePath path, std::string content_hash);
   std::string GetCacheKey() const;
+
   base::FilePath component_path_;
-  base::Time last_updated_;
+  std::string content_hash_;
   std::string component_id_;
   uint8_t permission_mask_;
   const raw_ptr<component_updater::ComponentUpdateService>

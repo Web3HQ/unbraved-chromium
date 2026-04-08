@@ -8,12 +8,9 @@
 #include <string>
 #include <utility>
 
-#include "base/check_is_test.h"
-#include "base/files/file.h"
 #include "base/files/file_util.h"
-#include "base/json/values_util.h"
 #include "base/logging.h"
-#include "base/strings/strcat.h"
+#include "base/strings/string_number_conversions.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/task/thread_pool.h"
@@ -22,6 +19,7 @@
 #include "brave/components/brave_shields/core/common/pref_names.h"
 #include "components/prefs/pref_service.h"
 #include "components/prefs/scoped_user_pref_update.h"
+#include "crypto/sha2.h"
 
 namespace brave_shields {
 
@@ -77,33 +75,34 @@ std::string AdBlockSubscriptionFiltersProvider::GetNameForDebugging() {
   return "AdBlockSubscriptionFiltersProvider";
 }
 
-void AdBlockSubscriptionFiltersProvider::OnGetFileInfo(base::File::Info info) {
-  if (!local_state_) {
-    CHECK_IS_TEST();
-  } else {
+void AdBlockSubscriptionFiltersProvider::OnContentHashComputed(
+    std::string content_hash) {
+  content_hash_ = std::move(content_hash);
+  if (local_state_) {
     ScopedDictPrefUpdate update(
         local_state_, prefs::kAdBlockSubscriptionFiltersCacheTimestamp);
-    update->Set(GetCacheKey(), base::TimeToValue(info.last_modified));
+    update->Set(GetCacheKey(), content_hash_);
   }
-  NotifyObservers(engine_is_default_, info.last_modified);
+  NotifyObservers(engine_is_default_);
 }
 
 std::string AdBlockSubscriptionFiltersProvider::GetCacheKey() const {
   return list_file_.BaseName().RemoveExtension().MaybeAsASCII();
 }
 
-base::Time AdBlockSubscriptionFiltersProvider::GetTimestamp() const {
-  if (!local_state_) {
-    CHECK_IS_TEST();
-    return base::Time::Now();
+std::string AdBlockSubscriptionFiltersProvider::GetContentHash() const {
+  if (!content_hash_.empty()) {
+    return content_hash_;
   }
-  const auto& dict =
-      local_state_->GetDict(prefs::kAdBlockSubscriptionFiltersCacheTimestamp);
-  auto* value = dict.Find(GetCacheKey());
-  if (value) {
-    return base::ValueToTime(value).value_or(base::Time());
+  if (local_state_) {
+    const auto& dict =
+        local_state_->GetDict(prefs::kAdBlockSubscriptionFiltersCacheTimestamp);
+    const std::string* stored = dict.FindString(GetCacheKey());
+    if (stored) {
+      return *stored;
+    }
   }
-  return base::Time();
+  return std::string();
 }
 
 void AdBlockSubscriptionFiltersProvider::OnDATFileDataReady(
@@ -133,12 +132,16 @@ void AdBlockSubscriptionFiltersProvider::OnListAvailable() {
       FROM_HERE, {base::MayBlock()},
       base::BindOnce(
           [](const base::FilePath& list_file) {
-            base::File::Info info;
-            base::GetFileInfo(list_file, &info);
-            return info;
+            std::optional<std::vector<uint8_t>> content =
+                base::ReadFileToBytes(list_file);
+            if (!content) {
+              return std::string();
+            }
+            return base::HexEncode(crypto::SHA256HashString(
+                std::string(content->begin(), content->end())));
           },
           list_file_),
-      base::BindOnce(&AdBlockSubscriptionFiltersProvider::OnGetFileInfo,
+      base::BindOnce(&AdBlockSubscriptionFiltersProvider::OnContentHashComputed,
                      weak_factory_.GetWeakPtr()));
 }
 

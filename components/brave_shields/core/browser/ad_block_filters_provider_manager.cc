@@ -5,10 +5,11 @@
 
 #include "brave/components/brave_shields/core/browser/ad_block_filters_provider_manager.h"
 
+#include <algorithm>
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "base/barrier_callback.h"
 #include "base/check.h"
@@ -16,7 +17,6 @@
 #include "base/notreached.h"
 #include "base/rand_util.h"
 #include "base/task/sequenced_task_runner.h"
-#include "base/time/time.h"
 #include "base/trace_event/trace_event.h"
 #include "brave/components/brave_shields/core/browser/ad_block_filters_provider.h"
 
@@ -45,7 +45,7 @@ void AdBlockFiltersProviderManager::RemoveProvider(
   auto it = filters_providers.find(provider);
   DCHECK(it != filters_providers.end());
   filters_providers.erase(it);
-  NotifyObservers(is_for_default_engine, base::Time::Now());
+  NotifyObservers(is_for_default_engine);
 }
 
 void AdBlockFiltersProviderManager::ForceNotifyObserver(
@@ -54,38 +54,51 @@ void AdBlockFiltersProviderManager::ForceNotifyObserver(
   auto& filters_providers = is_for_default_engine
                                 ? default_engine_filters_providers_
                                 : additional_engine_filters_providers_;
-  std::optional<base::Time> timestamp;
-  for (auto*& provider : filters_providers) {
-    if (provider->IsInitialized() && provider->GetTimestamp() > timestamp) {
-      timestamp = provider->GetTimestamp();
+  for (auto* const& provider : filters_providers) {
+    if (!provider->IsInitialized()) {
+      return;
     }
   }
-
-  if (timestamp) {
-    observer.OnChanged(is_for_default_engine, timestamp.value());
+  if (filters_providers.empty()) {
+    return;
   }
+  observer.OnChanged(is_for_default_engine);
 }
 
 std::string AdBlockFiltersProviderManager::GetNameForDebugging() {
   return "AdBlockFiltersProviderManager";
 }
 
-void AdBlockFiltersProviderManager::OnChanged(bool is_for_default_engine,
-                                              base::Time timestamp) {
+std::string AdBlockFiltersProviderManager::ComputeCombinedHash(
+    bool is_for_default_engine) const {
   auto& filters_providers = is_for_default_engine
                                 ? default_engine_filters_providers_
                                 : additional_engine_filters_providers_;
-  auto max_timestamp = timestamp;
-  for (auto*& provider : filters_providers) {
+  std::vector<std::string> hashes;
+  for (auto* const& provider : filters_providers) {
     if (!provider->IsInitialized()) {
-      return;
+      return std::string();
     }
-    auto provider_timestamp = provider->GetTimestamp();
-    if (provider_timestamp > max_timestamp) {
-      max_timestamp = provider_timestamp;
-    }
+    hashes.push_back(provider->GetContentHash());
   }
-  NotifyObservers(is_for_default_engine, max_timestamp);
+  std::sort(hashes.begin(), hashes.end());
+  std::string combined;
+  for (size_t i = 0; i < hashes.size(); i++) {
+    if (i > 0) {
+      combined += "|";
+    }
+    combined += hashes[i];
+  }
+  return combined;
+}
+
+void AdBlockFiltersProviderManager::OnChanged(bool is_for_default_engine) {
+  std::string combined = ComputeCombinedHash(is_for_default_engine);
+  if (combined.empty()) {
+    // At least one provider is not initialized yet.
+    return;
+  }
+  NotifyObservers(is_for_default_engine);
 }
 
 // Use LoadDATBufferForEngine instead, for Filter Provider Manager.
@@ -130,7 +143,7 @@ void RunAllResults(
   }
 }
 
-base::Time AdBlockFiltersProviderManager::GetTimestamp() const {
+std::string AdBlockFiltersProviderManager::GetContentHash() const {
   NOTREACHED();
 }
 

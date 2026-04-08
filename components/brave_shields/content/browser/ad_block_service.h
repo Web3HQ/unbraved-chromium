@@ -82,10 +82,8 @@ class AdBlockService {
         bool,
         DATFileDataBuffer,
         std::unique_ptr<rust::Box<adblock::FilterSet>>,
-        base::Time timestamp,
         AdblockResourceStorageBox)>;
-    using ShouldLoadFilterSetCallback =
-        base::RepeatingCallback<bool(base::Time)>;
+    using ShouldLoadFilterSetCallback = base::RepeatingCallback<bool()>;
 
     SourceProviderObserver(
         OnResourcesLoadedCallback on_resources_loaded,
@@ -100,17 +98,15 @@ class AdBlockService {
     ~SourceProviderObserver() override;
 
     // AdBlockFiltersProvider::Observer
-    void OnChanged(bool is_default_engine, base::Time timestamp) override;
+    void OnChanged(bool is_default_engine) override;
 
     void OnDATFileLoaded(DATFileDataBuffer dat);
 
    private:
     void LoadResources();
     void OnFilterSetLoaded(
-        base::Time timestamp,
         base::OnceCallback<void(rust::Box<adblock::FilterSet>*)> cb);
-    void OnFilterSetCreated(base::Time timestamp,
-                            std::unique_ptr<rust::Box<adblock::FilterSet>>);
+    void OnFilterSetCreated(std::unique_ptr<rust::Box<adblock::FilterSet>>);
 
     // AdBlockResourceProvider::Observer
     void OnResourcesLoaded(AdblockResourceStorageBox storage) override;
@@ -125,7 +121,6 @@ class AdBlockService {
     const bool engine_is_default_;
 
     std::unique_ptr<rust::Box<adblock::FilterSet>> filter_set_;
-    base::Time timestamp_;
     DATFileDataBuffer dat_;
 
     scoped_refptr<base::SequencedTaskRunner> task_runner_;
@@ -198,19 +193,18 @@ class AdBlockService {
  private:
   static std::string g_ad_block_dat_file_version_;
 
-  bool ShouldLoadFilterState(bool is_default_engine, base::Time timestamp);
+  bool ShouldLoadFilterState(bool is_default_engine);
 
-  std::string_view cache_timestamp_pref_name(bool engine_is_default);
+  std::string_view cache_hash_pref_name(bool engine_is_default);
 
   void OnResourcesLoaded(
       bool is_default_engine,
       DATFileDataBuffer dat,
       std::unique_ptr<rust::Box<adblock::FilterSet>> filter_set,
-      base::Time timestamp,
       AdblockResourceStorageBox storage);
 
   void NotifyOnDATLoaded(bool success, bool is_default_engine);
-  void OnDatCached(bool is_default_engine, base::Time timestamp, bool success);
+  void OnDatCached(bool is_default_engine, bool success);
   void OnReadCachedDATFiles(
       std::pair<std::optional<DATFileDataBuffer>,
                 std::optional<DATFileDataBuffer>> read_result);

@@ -9,12 +9,12 @@
 #include <string>
 #include <utility>
 
-#include "base/files/file.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/json/values_util.h"
 #include "base/rand_util.h"
 #include "base/strings/strcat.h"
+#include "base/strings/string_number_conversions.h"
 #include "base/task/thread_pool.h"
 #include "base/trace_event/trace_event.h"
 #include "brave/components/brave_shields/core/browser/ad_block_component_installer.h"
@@ -25,6 +25,7 @@
 #include "components/component_updater/component_updater_service.h"
 #include "components/prefs/pref_service.h"
 #include "components/prefs/scoped_user_pref_update.h"
+#include "crypto/sha2.h"
 
 constexpr char kListFile[] = "list.txt";
 
@@ -113,21 +114,19 @@ void AdBlockComponentFiltersProvider::UnregisterComponent() {
   }
 }
 
-void AdBlockComponentFiltersProvider::OnGetNewPathFileInfo(
+void AdBlockComponentFiltersProvider::OnContentHashComputed(
     base::FilePath path,
-    base::File::Info info) {
+    std::string content_hash) {
   base::FilePath old_path = component_path_;
   component_path_ = path;
-  // Use the file modification time for component updates (old_path non-empty),
-  // but use Now() for first initialization to ensure the engine rebuilds even
-  // if the cached DAT has a newer timestamp (e.g. list was toggled off then on).
-  last_updated_ =
-      old_path.empty() ? base::Time::Now() : info.last_modified;
+  content_hash_ = std::move(content_hash);
 
-  ScopedDictPrefUpdate update(local_state_,
-                              prefs::kAdBlockComponentFiltersCacheTimestamp);
-  update->Set(component_id_, base::TimeToValue(last_updated_));
-  NotifyObservers(engine_is_default_, last_updated_);
+  if (local_state_) {
+    ScopedDictPrefUpdate update(local_state_,
+                                prefs::kAdBlockComponentFiltersCacheTimestamp);
+    update->Set(component_id_, content_hash_);
+  }
+  NotifyObservers(engine_is_default_);
 
   if (!old_path.empty()) {
     base::ThreadPool::PostTask(
@@ -146,12 +145,17 @@ void AdBlockComponentFiltersProvider::OnComponentReady(
       FROM_HERE, {base::TaskPriority::USER_BLOCKING, base::MayBlock()},
       base::BindOnce(
           [](const base::FilePath& path) {
-            base::File::Info info;
-            base::GetFileInfo(path, &info);
-            return info;
+            auto list_path = path.AppendASCII(kListFile);
+            std::optional<std::vector<uint8_t>> content =
+                base::ReadFileToBytes(list_path);
+            if (!content) {
+              return std::string();
+            }
+            return base::HexEncode(crypto::SHA256HashString(
+                std::string(content->begin(), content->end())));
           },
           path),
-      base::BindOnce(&AdBlockComponentFiltersProvider::OnGetNewPathFileInfo,
+      base::BindOnce(&AdBlockComponentFiltersProvider::OnContentHashComputed,
                      weak_factory_.GetWeakPtr(), path));
 }
 
@@ -160,17 +164,23 @@ bool AdBlockComponentFiltersProvider::IsInitialized() const {
 }
 
 std::string AdBlockComponentFiltersProvider::GetCacheKey() const {
-  return base::StrCat(
-      {prefs::kAdBlockComponentFiltersCacheTimestamp, ".", component_id_});
+  return component_id_;
 }
-base::Time AdBlockComponentFiltersProvider::GetTimestamp() const {
-  const auto& dict =
-      local_state_->GetDict(prefs::kAdBlockComponentFiltersCacheTimestamp);
-  auto* value = dict.Find(component_id_);
-  if (value) {
-    return base::ValueToTime(value).value_or(base::Time());
+
+std::string AdBlockComponentFiltersProvider::GetContentHash() const {
+  if (!content_hash_.empty()) {
+    return content_hash_;
   }
-  return base::Time();
+  // On startup, before OnComponentReady fires, read persisted hash from prefs.
+  if (local_state_) {
+    const auto& dict =
+        local_state_->GetDict(prefs::kAdBlockComponentFiltersCacheTimestamp);
+    const std::string* stored = dict.FindString(GetCacheKey());
+    if (stored) {
+      return *stored;
+    }
+  }
+  return std::string();
 }
 
 base::FilePath AdBlockComponentFiltersProvider::GetFilterSetPath() {
