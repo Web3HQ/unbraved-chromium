@@ -5,6 +5,7 @@
 
 #include "brave/components/brave_shields/content/browser/ad_block_localhost_filters_provider.h"
 
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -48,7 +49,8 @@ std::string AdBlockLocalhostFiltersProvider::GetNameForDebugging() {
   return "AdBlockLocalhostFiltersProvider";
 }
 
-std::string AdBlockLocalhostFiltersProvider::GetContentHash() const {
+std::optional<std::string> AdBlockLocalhostFiltersProvider::GetContentHash()
+    const {
   static const base::NoDestructor<std::string> hash(
       base::HexEncode(crypto::SHA256HashString(std::string(
           std::begin(kLocalhostBadfilters), std::end(kLocalhostBadfilters)))));

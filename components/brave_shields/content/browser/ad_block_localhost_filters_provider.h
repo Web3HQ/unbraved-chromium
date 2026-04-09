@@ -6,6 +6,7 @@
 #ifndef BRAVE_COMPONENTS_BRAVE_SHIELDS_CONTENT_BROWSER_AD_BLOCK_LOCALHOST_FILTERS_PROVIDER_H_
 #define BRAVE_COMPONENTS_BRAVE_SHIELDS_CONTENT_BROWSER_AD_BLOCK_LOCALHOST_FILTERS_PROVIDER_H_
 
+#include <optional>
 #include <string>
 
 #include "base/functional/callback.h"
@@ -37,7 +38,7 @@ class AdBlockLocalhostFiltersProvider : public AdBlockFiltersProvider {
 
   std::string GetNameForDebugging() override;
 
-  std::string GetContentHash() const override;
+  std::optional<std::string> GetContentHash() const override;
 
  private:
   SEQUENCE_CHECKER(sequence_checker_);

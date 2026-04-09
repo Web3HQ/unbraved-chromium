@@ -77,8 +77,10 @@ TEST_F(AdBlockComponentFiltersProviderTest,
   ASSERT_TRUE(base::test::RunUntil([&]() { return observer_b.notified(); }));
 
   // Each component should have its own content hash.
-  std::string hash_a = provider_a.GetContentHash();
-  std::string hash_b = provider_b.GetContentHash();
+  ASSERT_TRUE(provider_a.GetContentHash().has_value());
+  ASSERT_TRUE(provider_b.GetContentHash().has_value());
+  std::string hash_a = provider_a.GetContentHash().value();
+  std::string hash_b = provider_b.GetContentHash().value();
 
   EXPECT_FALSE(hash_a.empty());
   EXPECT_FALSE(hash_b.empty());
@@ -91,8 +93,8 @@ TEST_F(AdBlockComponentFiltersProviderTest,
   SimulateComponentReady(provider_a, temp_dir_.GetPath());
   ASSERT_TRUE(base::test::RunUntil([&]() { return observer_a.notified(); }));
 
-  EXPECT_NE(provider_a.GetContentHash(), hash_a);
-  EXPECT_EQ(provider_b.GetContentHash(), original_hash_b);
+  EXPECT_NE(provider_a.GetContentHash().value(), hash_a);
+  EXPECT_EQ(provider_b.GetContentHash().value(), original_hash_b);
 
   provider_a.RemoveObserver(&observer_a);
   provider_b.RemoveObserver(&observer_b);

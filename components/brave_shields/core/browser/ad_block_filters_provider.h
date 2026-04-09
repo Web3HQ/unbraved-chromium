@@ -6,6 +6,7 @@
 #ifndef BRAVE_COMPONENTS_BRAVE_SHIELDS_CORE_BROWSER_AD_BLOCK_FILTERS_PROVIDER_H_
 #define BRAVE_COMPONENTS_BRAVE_SHIELDS_CORE_BROWSER_AD_BLOCK_FILTERS_PROVIDER_H_
 
+#include <optional>
 #include <string>
 
 #include "base/functional/callback.h"
@@ -55,7 +56,7 @@ class AdBlockFiltersProvider {
   // ready at creation time.
   virtual bool IsInitialized() const;
 
-  virtual std::string GetContentHash() const = 0;
+  virtual std::optional<std::string> GetContentHash() const = 0;
 
  protected:
   bool engine_is_default_;

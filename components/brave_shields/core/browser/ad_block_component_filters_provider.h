@@ -6,6 +6,7 @@
 #ifndef BRAVE_COMPONENTS_BRAVE_SHIELDS_CORE_BROWSER_AD_BLOCK_COMPONENT_FILTERS_PROVIDER_H_
 #define BRAVE_COMPONENTS_BRAVE_SHIELDS_CORE_BROWSER_AD_BLOCK_COMPONENT_FILTERS_PROVIDER_H_
 
+#include <optional>
 #include <string>
 
 #include "base/functional/callback.h"
@@ -77,7 +78,7 @@ class AdBlockComponentFiltersProvider : public AdBlockFiltersProvider {
 
   bool IsInitialized() const override;
 
-  std::string GetContentHash() const override;
+  std::optional<std::string> GetContentHash() const override;
 
  private:
   friend class ::AdBlockComponentFiltersProviderTest;

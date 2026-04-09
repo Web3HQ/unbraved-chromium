@@ -80,7 +80,11 @@ std::optional<std::string> AdBlockFiltersProviderManager::ComputeCombinedHash(
     if (!provider->IsInitialized()) {
       return std::nullopt;
     }
-    hashes.push_back(provider->GetContentHash());
+    auto hash = provider->GetContentHash();
+    if (!hash.has_value()) {
+      return std::nullopt;
+    }
+    hashes.push_back(std::move(*hash));
   }
   std::sort(hashes.begin(), hashes.end());
   return base::JoinString(hashes, "|");
@@ -136,7 +140,8 @@ void RunAllResults(
   }
 }
 
-std::string AdBlockFiltersProviderManager::GetContentHash() const {
+std::optional<std::string> AdBlockFiltersProviderManager::GetContentHash()
+    const {
   NOTREACHED();
 }
 

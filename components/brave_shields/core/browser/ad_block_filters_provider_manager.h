@@ -66,7 +66,7 @@ class AdBlockFiltersProviderManager : public AdBlockFiltersProvider,
       bool is_for_default_engine) const;
 
  private:
-  std::string GetContentHash() const override;
+  std::optional<std::string> GetContentHash() const override;
 
   void FinishCombinating(
       base::OnceCallback<

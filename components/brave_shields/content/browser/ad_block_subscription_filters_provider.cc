@@ -5,6 +5,7 @@
 
 #include "brave/components/brave_shields/content/browser/ad_block_subscription_filters_provider.h"
 
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -79,7 +80,8 @@ std::string AdBlockSubscriptionFiltersProvider::GetCacheKey() const {
   return list_file_.BaseName().RemoveExtension().MaybeAsASCII();
 }
 
-std::string AdBlockSubscriptionFiltersProvider::GetContentHash() const {
+std::optional<std::string> AdBlockSubscriptionFiltersProvider::GetContentHash()
+    const {
   if (!content_hash_.empty()) {
     return content_hash_;
   }
@@ -91,7 +93,7 @@ std::string AdBlockSubscriptionFiltersProvider::GetContentHash() const {
       return *stored;
     }
   }
-  return std::string();
+  return std::nullopt;
 }
 
 void AdBlockSubscriptionFiltersProvider::OnDATFileDataReady(

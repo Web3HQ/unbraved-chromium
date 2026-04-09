@@ -6,9 +6,11 @@
 #include "brave/components/brave_shields/core/browser/ad_block_component_filters_provider.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
+#include "base/check_is_test.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/json/values_util.h"
@@ -169,7 +171,8 @@ std::string AdBlockComponentFiltersProvider::GetCacheKey() const {
   return component_id_;
 }
 
-std::string AdBlockComponentFiltersProvider::GetContentHash() const {
+std::optional<std::string> AdBlockComponentFiltersProvider::GetContentHash()
+    const {
   if (!content_hash_.empty()) {
     return content_hash_;
   }
@@ -182,7 +185,7 @@ std::string AdBlockComponentFiltersProvider::GetContentHash() const {
       return *stored;
     }
   }
-  return std::string();
+  return std::nullopt;
 }
 
 base::FilePath AdBlockComponentFiltersProvider::GetFilterSetPath() {

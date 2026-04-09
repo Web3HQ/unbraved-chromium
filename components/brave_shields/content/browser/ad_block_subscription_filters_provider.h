@@ -6,6 +6,7 @@
 #ifndef BRAVE_COMPONENTS_BRAVE_SHIELDS_CONTENT_BROWSER_AD_BLOCK_SUBSCRIPTION_FILTERS_PROVIDER_H_
 #define BRAVE_COMPONENTS_BRAVE_SHIELDS_CONTENT_BROWSER_AD_BLOCK_SUBSCRIPTION_FILTERS_PROVIDER_H_
 
+#include <optional>
 #include <string>
 
 #include "base/functional/callback.h"
@@ -48,7 +49,7 @@ class AdBlockSubscriptionFiltersProvider : public AdBlockFiltersProvider {
 
   void OnListAvailable();
 
-  std::string GetContentHash() const override;
+  std::optional<std::string> GetContentHash() const override;
 
  private:
   void OnDATFileDataReady(

@@ -28,24 +28,24 @@ TEST_F(AdBlockCustomFiltersProviderTest, HashUpdatedOnFilterChange) {
   brave_shields::AdBlockCustomFiltersProvider provider(&prefs_, nullptr);
 
   // Initially hash should be the hash of empty string (not empty itself).
-  std::string initial_hash = provider.GetContentHash();
+  std::string initial_hash = provider.GetContentHash().value();
   EXPECT_FALSE(initial_hash.empty());
 
   provider.UpdateCustomFilters("||example.com^");
 
   // After update, hash should differ from the initial hash.
-  EXPECT_NE(provider.GetContentHash(), initial_hash);
+  EXPECT_NE(provider.GetContentHash().value(), initial_hash);
 }
 
 TEST_F(AdBlockCustomFiltersProviderTest, HashChangesWithDifferentContent) {
   brave_shields::AdBlockCustomFiltersProvider provider(&prefs_, nullptr);
 
   provider.UpdateCustomFilters("||first.com^");
-  std::string first_hash = provider.GetContentHash();
+  std::string first_hash = provider.GetContentHash().value();
   ASSERT_FALSE(first_hash.empty());
 
   provider.UpdateCustomFilters("||second.com^");
-  std::string second_hash = provider.GetContentHash();
+  std::string second_hash = provider.GetContentHash().value();
 
   EXPECT_NE(second_hash, first_hash);
 }

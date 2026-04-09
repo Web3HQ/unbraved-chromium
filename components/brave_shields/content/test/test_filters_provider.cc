@@ -5,6 +5,7 @@
 
 #include "brave/components/brave_shields/content/test/test_filters_provider.h"
 
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -83,7 +84,7 @@ bool TestFiltersProvider::IsInitialized() const {
   return is_initialized_;
 }
 
-std::string TestFiltersProvider::GetContentHash() const {
+std::optional<std::string> TestFiltersProvider::GetContentHash() const {
   if (content_hash_.empty()) {
     return base::HexEncode(crypto::SHA256HashString(rules_));
   }

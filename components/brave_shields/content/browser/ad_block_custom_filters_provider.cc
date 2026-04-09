@@ -84,7 +84,8 @@ std::string AdBlockCustomFiltersProvider::GetNameForDebugging() {
   return "AdBlockCustomFiltersProvider";
 }
 
-std::string AdBlockCustomFiltersProvider::GetContentHash() const {
+std::optional<std::string> AdBlockCustomFiltersProvider::GetContentHash()
+    const {
   if (!local_state_) {
     CHECK_IS_TEST();
     return base::HexEncode(crypto::SHA256HashString(std::string()));
