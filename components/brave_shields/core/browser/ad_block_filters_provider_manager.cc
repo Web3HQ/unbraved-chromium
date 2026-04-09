@@ -70,7 +70,7 @@ std::string AdBlockFiltersProviderManager::GetNameForDebugging() {
   return "AdBlockFiltersProviderManager";
 }
 
-std::string AdBlockFiltersProviderManager::ComputeCombinedHash(
+std::optional<std::string> AdBlockFiltersProviderManager::ComputeCombinedHash(
     bool is_for_default_engine) const {
   auto& filters_providers = is_for_default_engine
                                 ? default_engine_filters_providers_
@@ -78,7 +78,7 @@ std::string AdBlockFiltersProviderManager::ComputeCombinedHash(
   std::vector<std::string> hashes;
   for (auto* const& provider : filters_providers) {
     if (!provider->IsInitialized()) {
-      return std::string();
+      return std::nullopt;
     }
     hashes.push_back(provider->GetContentHash());
   }
@@ -87,8 +87,7 @@ std::string AdBlockFiltersProviderManager::ComputeCombinedHash(
 }
 
 void AdBlockFiltersProviderManager::OnChanged(bool is_for_default_engine) {
-  std::string combined = ComputeCombinedHash(is_for_default_engine);
-  if (combined.empty()) {
+  if (!ComputeCombinedHash(is_for_default_engine).has_value()) {
     // At least one provider is not initialized yet.
     return;
   }

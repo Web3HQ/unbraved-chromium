@@ -73,7 +73,7 @@ TEST(AdBlockFiltersProviderManagerTest, ForceNotifyObserverCombinesHashes) {
   } else {
     expected = hash_b + "|" + hash_a;
   }
-  EXPECT_EQ(m.ComputeCombinedHash(true), expected);
+  EXPECT_EQ(m.ComputeCombinedHash(true).value(), expected);
 }
 
 TEST(AdBlockFiltersProviderManagerTest,
@@ -122,5 +122,5 @@ TEST(AdBlockFiltersProviderManagerTest, OnChangedCombinesProviderHashes) {
 
   EXPECT_EQ(observer.changed_count, 1);
   // With a single provider, combined hash is just that provider's hash
-  EXPECT_EQ(m.ComputeCombinedHash(true), HashOf("test_rules"));
+  EXPECT_EQ(m.ComputeCombinedHash(true).value(), HashOf("test_rules"));
 }

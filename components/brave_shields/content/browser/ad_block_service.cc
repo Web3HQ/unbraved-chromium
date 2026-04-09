@@ -77,11 +77,11 @@ AdBlockService::SourceProviderObserver::SourceProviderObserver(
     bool engine_is_default,
     scoped_refptr<base::SequencedTaskRunner> task_runner)
     : on_resources_loaded_(std::move(on_resources_loaded)),
-      resource_provider_(resource_provider),
-      filters_provider_manager_(filters_provider_manager),
       should_load_filter_set_(should_load_filter_set),
       engine_is_default_(engine_is_default),
-      task_runner_(std::move(task_runner)) {
+      task_runner_(std::move(task_runner)),
+      resource_provider_(resource_provider),
+      filters_provider_manager_(filters_provider_manager) {
   filters_provider_manager_->AddObserver(this);
   filters_provider_manager_->ForceNotifyObserver(*this, engine_is_default_);
 }
@@ -351,14 +351,14 @@ void AdBlockService::NotifyOnDATLoaded(bool is_default_engine, bool success) {
 void AdBlockService::OnDatCached(bool is_default_engine, bool success) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (success) {
-    std::string combined_hash =
+    auto combined_hash =
         filters_provider_manager_->ComputeCombinedHash(is_default_engine);
-    if (!combined_hash.empty()) {
+    if (combined_hash.has_value()) {
       if (!local_state_) {
         CHECK_IS_TEST();
       } else {
         local_state_->SetString(cache_hash_pref_name(is_default_engine),
-                                combined_hash);
+                                *combined_hash);
       }
     }
   }
@@ -454,11 +454,14 @@ bool AdBlockService::ShouldLoadFilterState(bool is_default_engine) {
     CHECK_IS_TEST();
     return true;
   }
-  std::string combined_hash =
+  auto combined_hash =
       filters_provider_manager_->ComputeCombinedHash(is_default_engine);
+  if (!combined_hash.has_value()) {
+    return true;
+  }
   std::string cached_hash =
       local_state_->GetString(cache_hash_pref_name(is_default_engine));
-  return cached_hash.empty() || cached_hash != combined_hash;
+  return cached_hash.empty() || cached_hash != *combined_hash;
 }
 
 std::string_view AdBlockService::cache_hash_pref_name(bool engine_is_default) {

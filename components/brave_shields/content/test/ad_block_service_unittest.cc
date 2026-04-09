@@ -177,9 +177,9 @@ class AdBlockServiceTest : public AdBlockServiceTestBase {
     auto service = CreateService();
     auto* manager = service->GetFiltersProviderManagerForTesting();
     prefs_.SetString(prefs::kAdBlockDefaultCacheHash,
-                     manager->ComputeCombinedHash(true));
+                     manager->ComputeCombinedHash(true).value_or(""));
     prefs_.SetString(prefs::kAdBlockAdditionalCacheHash,
-                     manager->ComputeCombinedHash(false));
+                     manager->ComputeCombinedHash(false).value_or(""));
   }
 
   base::test::TaskEnvironment task_environment_;
@@ -577,9 +577,9 @@ TEST_F(AdBlockServiceQueuedTest, MatchingCacheHashSkipsFilterSetLoad) {
         base::MakeRefCounted<base::TestMockTimeTaskRunner>());
     auto* manager = temp_service->GetFiltersProviderManagerForTesting();
     prefs_.SetString(prefs::kAdBlockDefaultCacheHash,
-                     manager->ComputeCombinedHash(true));
+                     manager->ComputeCombinedHash(true).value_or(""));
     prefs_.SetString(prefs::kAdBlockAdditionalCacheHash,
-                     manager->ComputeCombinedHash(false));
+                     manager->ComputeCombinedHash(false).value_or(""));
   }
 
   auto service_task_runner =
@@ -623,8 +623,9 @@ TEST_F(AdBlockServiceQueuedTest, MatchingCacheHashSkipsFilterSetLoad) {
   provider->RegisterAsSourceProvider(service.get());
   prefs_.SetString(
       prefs::kAdBlockDefaultCacheHash,
-      service->GetFiltersProviderManagerForTesting()->ComputeCombinedHash(
-          true));
+      service->GetFiltersProviderManagerForTesting()
+          ->ComputeCombinedHash(true)
+          .value_or(""));
 
   // Drain tasks from the provider registration.
   while (service_task_runner->HasPendingTask()) {

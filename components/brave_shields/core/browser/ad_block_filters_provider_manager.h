@@ -6,6 +6,7 @@
 #ifndef BRAVE_COMPONENTS_BRAVE_SHIELDS_CORE_BROWSER_AD_BLOCK_FILTERS_PROVIDER_MANAGER_H_
 #define BRAVE_COMPONENTS_BRAVE_SHIELDS_CORE_BROWSER_AD_BLOCK_FILTERS_PROVIDER_MANAGER_H_
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -60,8 +61,9 @@ class AdBlockFiltersProviderManager : public AdBlockFiltersProvider,
   std::string GetNameForDebugging() override;
 
   // Returns the combined hash of all initialized providers for the given
-  // engine. Useful for pre-setting cache prefs in tests.
-  std::string ComputeCombinedHash(bool is_for_default_engine) const;
+  // engine, or nullopt if any provider is not yet initialized.
+  std::optional<std::string> ComputeCombinedHash(
+      bool is_for_default_engine) const;
 
  private:
   std::string GetContentHash() const override;
