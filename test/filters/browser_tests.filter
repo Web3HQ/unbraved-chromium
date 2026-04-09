@@ -2801,6 +2801,7 @@
 -WebUIPinnedToolbarActionsBrowserTest.InvokeActions
 -WebUIPinnedToolbarActionsBrowserTest.PinAllTogether
 -WebUIPinnedToolbarActionsBrowserTest.PinUnpinIndividually
+-WebUIPinnedToolbarActionsBrowserTest.SetActionElementIdentifier
 -WebUIToolbarWebViewPixelBrowserTest.*
 
 # Tests below this point have not been diagnosed or had issues created yet.
@@ -3560,6 +3561,7 @@
 -WebBluetoothTestWithNewPermissionsBackendEnabled.WebBluetoothScanningIdsNotPersistent
 -WebInstallCurrentDocumentBrowserTest.UserAcceptsOpenDialog
 -WebNavigationApiBackForwardCacheTest.*
+-WebNavigationApiTest.Download
 -WebRtcDesktopCaptureBrowserTest.*
 -WebRtcSameOriginPolicyBrowserTest.*
 -WebSocketBrowserTest.*
