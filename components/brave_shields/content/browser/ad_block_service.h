@@ -189,11 +189,13 @@ class AdBlockService {
   AdBlockDefaultResourceProvider* GetDefaultResourceProviderForTesting();
   base::SequencedTaskRunner* GetTaskRunnerForTesting();
   bool GetAllowDatLoadingForTesting() const;
+  std::string ComputeCombinedCacheKeyForTesting(bool is_default_engine) const;
 
  private:
   static std::string g_ad_block_dat_file_version_;
 
   bool ShouldLoadFilterState(bool is_default_engine);
+  std::string ComputeCombinedCacheKey(bool is_default_engine) const;
 
   std::string_view cache_hash_pref_name(bool engine_is_default);
 

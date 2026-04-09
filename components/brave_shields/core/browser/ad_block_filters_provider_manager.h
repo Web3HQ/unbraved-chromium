@@ -60,9 +60,7 @@ class AdBlockFiltersProviderManager : public AdBlockFiltersProvider,
                            bool is_default_engine);
   std::string GetNameForDebugging() override;
 
-  // Returns the combined cache key of all providers for the given engine.
-  // Providers that return nullopt from GetCacheKey() are excluded.
-  std::optional<std::string> ComputeCombinedHash(
+  const base::flat_set<AdBlockFiltersProvider*>& GetProviders(
       bool is_for_default_engine) const;
 
  private:

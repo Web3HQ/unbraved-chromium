@@ -70,21 +70,10 @@ std::string AdBlockFiltersProviderManager::GetNameForDebugging() {
   return "AdBlockFiltersProviderManager";
 }
 
-std::optional<std::string> AdBlockFiltersProviderManager::ComputeCombinedHash(
-    bool is_for_default_engine) const {
-  auto& filters_providers = is_for_default_engine
-                                ? default_engine_filters_providers_
-                                : additional_engine_filters_providers_;
-  std::vector<std::string> hashes;
-  for (auto* const& provider : filters_providers) {
-    auto hash = provider->GetCacheKey();
-    if (!hash.has_value()) {
-      return std::nullopt;
-    }
-    hashes.push_back(std::move(*hash));
-  }
-  std::sort(hashes.begin(), hashes.end());
-  return base::JoinString(hashes, "|");
+const base::flat_set<AdBlockFiltersProvider*>&
+AdBlockFiltersProviderManager::GetProviders(bool is_for_default_engine) const {
+  return is_for_default_engine ? default_engine_filters_providers_
+                               : additional_engine_filters_providers_;
 }
 
 void AdBlockFiltersProviderManager::OnChanged(bool is_for_default_engine) {

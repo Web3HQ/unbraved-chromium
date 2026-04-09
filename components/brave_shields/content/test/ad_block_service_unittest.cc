@@ -173,11 +173,10 @@ class AdBlockServiceTest : public AdBlockServiceTestBase {
   // provider set. This simulates a previous session that cached the DAT files.
   void SetCacheHashesFromProviders() {
     auto service = CreateService();
-    auto* manager = service->GetFiltersProviderManagerForTesting();
     prefs_.SetString(prefs::kAdBlockDefaultCacheHash,
-                     manager->ComputeCombinedHash(true).value_or(""));
+                     service->ComputeCombinedCacheKeyForTesting(true));
     prefs_.SetString(prefs::kAdBlockAdditionalCacheHash,
-                     manager->ComputeCombinedHash(false).value_or(""));
+                     service->ComputeCombinedCacheKeyForTesting(false));
   }
 
   base::test::TaskEnvironment task_environment_;
@@ -610,11 +609,10 @@ TEST_F(AdBlockServiceQueuedTest, MatchingCacheHashSkipsFilterSetLoad) {
   {
     auto temp_service = CreateServiceWithTaskRunner(
         base::MakeRefCounted<base::TestMockTimeTaskRunner>());
-    auto* manager = temp_service->GetFiltersProviderManagerForTesting();
     prefs_.SetString(prefs::kAdBlockDefaultCacheHash,
-                     manager->ComputeCombinedHash(true).value_or(""));
+                     temp_service->ComputeCombinedCacheKeyForTesting(true));
     prefs_.SetString(prefs::kAdBlockAdditionalCacheHash,
-                     manager->ComputeCombinedHash(false).value_or(""));
+                     temp_service->ComputeCombinedCacheKeyForTesting(false));
   }
 
   auto service_task_runner =
@@ -657,9 +655,7 @@ TEST_F(AdBlockServiceQueuedTest, MatchingCacheHashSkipsFilterSetLoad) {
       "||from-filter-set.com^", /*engine_is_default=*/true);
   provider->RegisterAsSourceProvider(service.get());
   prefs_.SetString(prefs::kAdBlockDefaultCacheHash,
-                   service->GetFiltersProviderManagerForTesting()
-                       ->ComputeCombinedHash(true)
-                       .value_or(""));
+                   service->ComputeCombinedCacheKeyForTesting(true));
 
   // Drain tasks from the provider registration.
   while (service_task_runner->HasPendingTask()) {

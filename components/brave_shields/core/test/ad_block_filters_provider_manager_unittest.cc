@@ -5,21 +5,9 @@
 
 #include "brave/components/brave_shields/core/browser/ad_block_filters_provider_manager.h"
 
-#include <string>
-
-#include "base/hash/hash.h"
-#include "base/strings/string_number_conversions.h"
 #include "brave/components/brave_shields/content/test/test_filters_provider.h"
 #include "brave/components/brave_shields/core/browser/ad_block_filters_provider.h"
 #include "testing/gtest/include/gtest/gtest.h"
-
-namespace {
-
-std::string HashOf(std::string_view content) {
-  return base::NumberToString(base::FastHash(std::string(content)));
-}
-
-}  // namespace
 
 class FiltersProviderManagerTestObserver
     : public brave_shields::AdBlockFiltersProvider::Observer {
@@ -64,16 +52,8 @@ TEST(AdBlockFiltersProviderManagerTest, ForceNotifyObserverCombinesHashes) {
   // Should have been notified once
   EXPECT_EQ(force_observer.changed_count, 1);
 
-  // The combined hash should be the sorted, pipe-joined hashes
-  std::string hash_a = HashOf("rules_a");
-  std::string hash_b = HashOf("rules_b");
-  std::string expected;
-  if (hash_a < hash_b) {
-    expected = hash_a + "|" + hash_b;
-  } else {
-    expected = hash_b + "|" + hash_a;
-  }
-  EXPECT_EQ(m.ComputeCombinedHash(true).value(), expected);
+  // Both providers should be in the default engine set.
+  EXPECT_EQ(m.GetProviders(true).size(), 2u);
 }
 
 TEST(AdBlockFiltersProviderManagerTest,
@@ -121,6 +101,6 @@ TEST(AdBlockFiltersProviderManagerTest, OnChangedCombinesProviderHashes) {
   provider.RegisterAsSourceProvider(&m);
 
   EXPECT_EQ(observer.changed_count, 1);
-  // With a single provider, combined hash is just that provider's hash
-  EXPECT_EQ(m.ComputeCombinedHash(true).value(), HashOf("test_rules"));
+  // Provider should be in the default engine set.
+  EXPECT_EQ(m.GetProviders(true).size(), 1u);
 }

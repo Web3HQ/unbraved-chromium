@@ -5,11 +5,14 @@
 
 #include "brave/components/brave_shields/content/browser/ad_block_service.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 #include "base/check_is_test.h"
 #include "base/debug/leak_annotations.h"
@@ -24,6 +27,7 @@
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/sequence_checker.h"
+#include "base/strings/string_util.h"
 #include "base/strings/string_view_util.h"
 #include "base/task/thread_pool.h"
 #include "base/trace_event/trace_event.h"
@@ -371,14 +375,13 @@ void AdBlockService::OnEngineLoaded(bool is_default_engine,
 void AdBlockService::OnDatCached(bool is_default_engine, bool success) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (success) {
-    auto combined_hash =
-        filters_provider_manager_->ComputeCombinedHash(is_default_engine);
-    if (combined_hash.has_value()) {
+    std::string combined_key = ComputeCombinedCacheKey(is_default_engine);
+    if (!combined_key.empty()) {
       if (!local_state_) {
         CHECK_IS_TEST();
       } else {
         local_state_->SetString(cache_hash_pref_name(is_default_engine),
-                                *combined_hash);
+                                combined_key);
       }
     }
   }
@@ -465,6 +468,21 @@ void AdBlockService::SetupDiscardPolicy(
                      base::Unretained(engine_wrapper_.get()), policy));
 }
 
+std::string AdBlockService::ComputeCombinedCacheKey(
+    bool is_default_engine) const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  std::vector<std::string> keys;
+  for (auto* provider :
+       filters_provider_manager_->GetProviders(is_default_engine)) {
+    auto key = provider->GetCacheKey();
+    if (key.has_value()) {
+      keys.push_back(std::move(*key));
+    }
+  }
+  std::sort(keys.begin(), keys.end());
+  return base::JoinString(keys, "|");
+}
+
 bool AdBlockService::ShouldLoadFilterState(bool is_default_engine) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!base::FeatureList::IsEnabled(features::kAdblockDATCache)) {
@@ -474,14 +492,10 @@ bool AdBlockService::ShouldLoadFilterState(bool is_default_engine) {
     CHECK_IS_TEST();
     return true;
   }
-  auto combined_hash =
-      filters_provider_manager_->ComputeCombinedHash(is_default_engine);
-  if (!combined_hash.has_value()) {
-    return true;
-  }
-  std::string cached_hash =
+  std::string combined_key = ComputeCombinedCacheKey(is_default_engine);
+  std::string cached_key =
       local_state_->GetString(cache_hash_pref_name(is_default_engine));
-  return cached_hash.empty() || cached_hash != *combined_hash;
+  return cached_key.empty() || cached_key != combined_key;
 }
 
 std::string_view AdBlockService::cache_hash_pref_name(bool engine_is_default) {
@@ -556,6 +570,12 @@ bool AdBlockService::GetAllowDatLoadingForTesting() const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   CHECK_IS_TEST();
   return allow_load_dat_loading_;
+}
+
+std::string AdBlockService::ComputeCombinedCacheKeyForTesting(
+    bool is_default_engine) const {
+  CHECK_IS_TEST();
+  return ComputeCombinedCacheKey(is_default_engine);
 }
 
 }  // namespace brave_shields
