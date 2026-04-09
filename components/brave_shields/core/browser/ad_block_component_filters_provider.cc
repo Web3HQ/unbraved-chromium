@@ -182,7 +182,14 @@ void AdBlockComponentFiltersProvider::LoadFilterSet(
 
   base::ThreadPool::PostTaskAndReplyWithResult(
       FROM_HERE, {base::MayBlock()},
-      base::BindOnce(&brave_component_updater::ReadDATFileData, list_file_path),
+      base::BindOnce(
+          [](const base::FilePath& path) {
+            auto buffer = brave_component_updater::ReadDATFileData(path);
+            std::string hash = base::NumberToString(
+                base::FastHash(std::string(buffer.begin(), buffer.end())));
+            return std::make_pair(std::move(buffer), std::move(hash));
+          },
+          list_file_path),
       base::BindOnce(&AdBlockComponentFiltersProvider::OnDATFileDataReady,
                      weak_factory_.GetWeakPtr(), std::move(cb), flow_id));
 }
@@ -191,16 +198,16 @@ void AdBlockComponentFiltersProvider::OnDATFileDataReady(
     base::OnceCallback<
         void(base::OnceCallback<void(rust::Box<adblock::FilterSet>*)>)> cb,
     uint64_t flow_id,
-    DATFileDataBuffer buffer) {
-  // Compute and persist the content hash while we have the data in hand.
+    std::pair<DATFileDataBuffer, std::string> result) {
+  // Persist the content hash that was computed on the thread pool.
   if (local_state_) {
     ScopedDictPrefUpdate update(local_state_,
                                 prefs::kAdBlockComponentFiltersCacheHash);
-    update->Set(component_id_, base::NumberToString(base::FastHash(
-                                   std::string(buffer.begin(), buffer.end()))));
+    update->Set(component_id_, result.second);
   }
   OnReadDATFileData(std::move(cb), permission_mask_,
-                    perfetto::Flow::ProcessScoped(flow_id), std::move(buffer));
+                    perfetto::Flow::ProcessScoped(flow_id),
+                    std::move(result.first));
 }
 
 }  // namespace brave_shields

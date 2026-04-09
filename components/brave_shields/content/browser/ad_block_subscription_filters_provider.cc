@@ -67,7 +67,14 @@ void AdBlockSubscriptionFiltersProvider::LoadFilterSet(
               "AdBlockSubscriptionFiltersProvider::LoadFilterSet", flow);
   base::ThreadPool::PostTaskAndReplyWithResult(
       FROM_HERE, {base::MayBlock()},
-      base::BindOnce(&brave_component_updater::ReadDATFileData, list_file_),
+      base::BindOnce(
+          [](const base::FilePath& path) {
+            auto buffer = brave_component_updater::ReadDATFileData(path);
+            std::string hash = base::NumberToString(
+                base::FastHash(std::string(buffer.begin(), buffer.end())));
+            return std::make_pair(std::move(buffer), std::move(hash));
+          },
+          list_file_),
       base::BindOnce(&AdBlockSubscriptionFiltersProvider::OnDATFileDataReady,
                      weak_factory_.GetWeakPtr(), std::move(cb), flow));
 }
@@ -99,15 +106,14 @@ void AdBlockSubscriptionFiltersProvider::OnDATFileDataReady(
     base::OnceCallback<
         void(base::OnceCallback<void(rust::Box<adblock::FilterSet>*)>)> cb,
     const perfetto::Flow& flow,
-    const DATFileDataBuffer& dat_buf) {
+    std::pair<DATFileDataBuffer, std::string> result) {
   TRACE_EVENT("brave.adblock",
               "AdBlockSubscriptionFiltersProvider::OnDATFileDataReady", flow);
-  // Compute and persist the content hash while we have the data in hand.
+  // Persist the content hash that was computed on the thread pool.
   if (local_state_) {
     ScopedDictPrefUpdate update(local_state_,
                                 prefs::kAdBlockSubscriptionFiltersCacheHash);
-    update->Set(GetCacheKey(), base::NumberToString(base::FastHash(std::string(
-                                   dat_buf.begin(), dat_buf.end()))));
+    update->Set(GetCacheKey(), result.second);
   } else {
     CHECK_IS_TEST();
   }
@@ -124,7 +130,7 @@ void AdBlockSubscriptionFiltersProvider::OnDATFileDataReady(
           },
           base::SingleThreadTaskRunner::GetCurrentDefault(),
           on_metadata_retrieved_),
-      dat_buf, flow));
+      result.first, flow));
 }
 
 void AdBlockSubscriptionFiltersProvider::OnListAvailable() {

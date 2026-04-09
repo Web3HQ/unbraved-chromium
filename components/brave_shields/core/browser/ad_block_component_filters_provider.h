@@ -8,6 +8,7 @@
 
 #include <optional>
 #include <string>
+#include <utility>
 
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
@@ -90,7 +91,7 @@ class AdBlockComponentFiltersProvider : public AdBlockFiltersProvider {
       base::OnceCallback<
           void(base::OnceCallback<void(rust::Box<adblock::FilterSet>*)>)> cb,
       uint64_t flow_id,
-      DATFileDataBuffer buffer);
+      std::pair<DATFileDataBuffer, std::string> result);
   std::string GetCacheKey() const;
 
   base::FilePath component_path_;

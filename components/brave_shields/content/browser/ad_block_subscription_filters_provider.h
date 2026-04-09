@@ -8,6 +8,7 @@
 
 #include <optional>
 #include <string>
+#include <utility>
 
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
@@ -56,7 +57,7 @@ class AdBlockSubscriptionFiltersProvider : public AdBlockFiltersProvider {
       base::OnceCallback<
           void(base::OnceCallback<void(rust::Box<adblock::FilterSet>*)>)> cb,
       const perfetto::Flow& flow,
-      const DATFileDataBuffer& dat_buf);
+      std::pair<DATFileDataBuffer, std::string> result);
 
   std::string GetNameForDebugging() override;
 
