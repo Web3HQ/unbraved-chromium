@@ -7,16 +7,16 @@
 
 #include <string>
 
+#include "base/hash/hash.h"
 #include "base/strings/string_number_conversions.h"
 #include "brave/components/brave_shields/content/test/test_filters_provider.h"
 #include "brave/components/brave_shields/core/browser/ad_block_filters_provider.h"
-#include "crypto/sha2.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace {
 
 std::string HashOf(std::string_view content) {
-  return base::HexEncode(crypto::SHA256HashString(std::string(content)));
+  return base::NumberToString(base::PersistentHash(std::string(content)));
 }
 
 }  // namespace

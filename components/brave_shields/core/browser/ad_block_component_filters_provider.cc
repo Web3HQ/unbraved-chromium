@@ -13,9 +13,9 @@
 #include "base/check_is_test.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
+#include "base/hash/hash.h"
 #include "base/json/values_util.h"
 #include "base/rand_util.h"
-#include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/task/thread_pool.h"
 #include "base/trace_event/trace_event.h"
@@ -27,7 +27,6 @@
 #include "components/component_updater/component_updater_service.h"
 #include "components/prefs/pref_service.h"
 #include "components/prefs/scoped_user_pref_update.h"
-#include "crypto/sha2.h"
 
 constexpr char kListFile[] = "list.txt";
 
@@ -155,7 +154,7 @@ void AdBlockComponentFiltersProvider::OnComponentReady(
             if (!content) {
               return std::string();
             }
-            return base::HexEncode(crypto::SHA256HashString(
+            return base::NumberToString(base::PersistentHash(
                 std::string(content->begin(), content->end())));
           },
           path),

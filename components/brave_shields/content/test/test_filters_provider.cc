@@ -10,12 +10,12 @@
 #include <utility>
 
 #include "base/check.h"
+#include "base/hash/hash.h"
 #include "base/strings/string_number_conversions.h"
 #include "brave/components/brave_component_updater/browser/dat_file_util.h"
 #include "brave/components/brave_shields/content/browser/ad_block_service.h"
 #include "brave/components/brave_shields/core/browser/ad_block_filters_provider.h"
 #include "brave/components/brave_shields/core/browser/ad_block_filters_provider_manager.h"
-#include "crypto/sha2.h"
 
 using brave_component_updater::DATFileDataBuffer;
 
@@ -75,7 +75,7 @@ void TestFiltersProvider::Initialize() {
   CHECK(!is_initialized_);
   is_initialized_ = true;
   if (content_hash_.empty()) {
-    content_hash_ = base::HexEncode(crypto::SHA256HashString(rules_));
+    content_hash_ = base::NumberToString(base::PersistentHash(rules_));
   }
   NotifyObservers(engine_is_default_);
 }
@@ -86,7 +86,7 @@ bool TestFiltersProvider::IsInitialized() const {
 
 std::optional<std::string> TestFiltersProvider::GetContentHash() const {
   if (content_hash_.empty()) {
-    return base::HexEncode(crypto::SHA256HashString(rules_));
+    return base::NumberToString(base::PersistentHash(rules_));
   }
   return content_hash_;
 }

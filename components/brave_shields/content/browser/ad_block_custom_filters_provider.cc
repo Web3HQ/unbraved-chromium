@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "base/check_is_test.h"
+#include "base/hash/hash.h"
 #include "base/rand_util.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
@@ -21,7 +22,6 @@
 #include "brave/components/brave_shields/core/browser/brave_shields_utils.h"
 #include "brave/components/brave_shields/core/common/pref_names.h"
 #include "components/prefs/pref_service.h"
-#include "crypto/sha2.h"
 
 namespace brave_shields {
 
@@ -88,9 +88,9 @@ std::optional<std::string> AdBlockCustomFiltersProvider::GetContentHash()
     const {
   if (!local_state_) {
     CHECK_IS_TEST();
-    return base::HexEncode(crypto::SHA256HashString(std::string()));
+    return base::NumberToString(base::PersistentHash(std::string()));
   }
-  return base::HexEncode(crypto::SHA256HashString(
+  return base::NumberToString(base::PersistentHash(
       local_state_->GetString(prefs::kAdBlockCustomFilters)));
 }
 

@@ -14,6 +14,7 @@
 #include "base/files/scoped_temp_dir.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
+#include "base/hash/hash.h"
 #include "base/location.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/run_loop.h"
@@ -35,7 +36,6 @@
 #include "brave/components/brave_shields/core/common/features.h"
 #include "brave/components/brave_shields/core/common/pref_names.h"
 #include "components/prefs/testing_pref_service.h"
-#include "crypto/sha2.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/mojom/loader/resource_load_info.mojom-shared.h"
 #include "url/gurl.h"
@@ -95,7 +95,7 @@ class AdBlockServiceTestBase : public testing::Test {
 
  protected:
   static std::string HashOf(std::string_view content) {
-    return base::HexEncode(crypto::SHA256HashString(std::string(content)));
+    return base::NumberToString(base::PersistentHash(std::string(content)));
   }
 
   DATFileDataBuffer CreateAdblockDAT(std::string_view filters) {

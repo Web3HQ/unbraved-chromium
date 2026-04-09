@@ -10,10 +10,10 @@
 #include <utility>
 #include <vector>
 
+#include "base/hash/hash.h"
 #include "base/no_destructor.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/task/single_thread_task_runner.h"
-#include "crypto/sha2.h"
 
 namespace brave_shields {
 
@@ -52,7 +52,7 @@ std::string AdBlockLocalhostFiltersProvider::GetNameForDebugging() {
 std::optional<std::string> AdBlockLocalhostFiltersProvider::GetContentHash()
     const {
   static const base::NoDestructor<std::string> hash(
-      base::HexEncode(crypto::SHA256HashString(std::string(
+      base::NumberToString(base::PersistentHash(std::string(
           std::begin(kLocalhostBadfilters), std::end(kLocalhostBadfilters)))));
   return *hash;
 }

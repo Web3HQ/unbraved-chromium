@@ -9,7 +9,8 @@
 #include <string>
 #include <utility>
 
-#include "base/files/file_util.h"
+#include "base/check_is_test.h"
+#include "base/hash/hash.h"
 #include "base/logging.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/task/sequenced_task_runner.h"
@@ -20,7 +21,6 @@
 #include "brave/components/brave_shields/core/common/pref_names.h"
 #include "components/prefs/pref_service.h"
 #include "components/prefs/scoped_user_pref_update.h"
-#include "crypto/sha2.h"
 
 namespace brave_shields {
 
@@ -106,12 +106,14 @@ void AdBlockSubscriptionFiltersProvider::OnDATFileDataReady(
   TRACE_EVENT("brave.adblock",
               "AdBlockSubscriptionFiltersProvider::OnDATFileDataReady", flow);
   // Compute the content hash while we have the data in hand.
-  content_hash_ = base::HexEncode(
-      crypto::SHA256HashString(std::string(dat_buf.begin(), dat_buf.end())));
+  content_hash_ = base::NumberToString(
+      base::PersistentHash(std::string(dat_buf.begin(), dat_buf.end())));
   if (local_state_) {
     ScopedDictPrefUpdate update(local_state_,
                                 prefs::kAdBlockSubscriptionFiltersCacheHash);
     update->Set(GetCacheKey(), content_hash_);
+  } else {
+    CHECK_IS_TEST();
   }
 
   std::move(cb).Run(base::BindOnce(
