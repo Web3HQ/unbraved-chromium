@@ -59,7 +59,6 @@ class AdBlockSubscriptionFiltersProvider : public AdBlockFiltersProvider {
 
   std::string GetNameForDebugging() override;
 
-  void OnContentHashComputed(std::string content_hash);
   std::string GetCacheKey() const;
 
   base::FilePath list_file_;

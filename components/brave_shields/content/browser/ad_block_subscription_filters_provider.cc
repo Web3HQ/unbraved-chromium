@@ -75,17 +75,6 @@ std::string AdBlockSubscriptionFiltersProvider::GetNameForDebugging() {
   return "AdBlockSubscriptionFiltersProvider";
 }
 
-void AdBlockSubscriptionFiltersProvider::OnContentHashComputed(
-    std::string content_hash) {
-  content_hash_ = std::move(content_hash);
-  if (local_state_) {
-    ScopedDictPrefUpdate update(
-        local_state_, prefs::kAdBlockSubscriptionFiltersCacheTimestamp);
-    update->Set(GetCacheKey(), content_hash_);
-  }
-  NotifyObservers(engine_is_default_);
-}
-
 std::string AdBlockSubscriptionFiltersProvider::GetCacheKey() const {
   return list_file_.BaseName().RemoveExtension().MaybeAsASCII();
 }
@@ -112,6 +101,15 @@ void AdBlockSubscriptionFiltersProvider::OnDATFileDataReady(
     const DATFileDataBuffer& dat_buf) {
   TRACE_EVENT("brave.adblock",
               "AdBlockSubscriptionFiltersProvider::OnDATFileDataReady", flow);
+  // Compute the content hash while we have the data in hand.
+  content_hash_ = base::HexEncode(crypto::SHA256HashString(
+      std::string(dat_buf.begin(), dat_buf.end())));
+  if (local_state_) {
+    ScopedDictPrefUpdate update(
+        local_state_, prefs::kAdBlockSubscriptionFiltersCacheTimestamp);
+    update->Set(GetCacheKey(), content_hash_);
+  }
+
   std::move(cb).Run(base::BindOnce(
       &AddDATBufferToFilterSet,
       base::BindOnce(
@@ -128,21 +126,12 @@ void AdBlockSubscriptionFiltersProvider::OnDATFileDataReady(
 }
 
 void AdBlockSubscriptionFiltersProvider::OnListAvailable() {
-  base::ThreadPool::PostTaskAndReplyWithResult(
-      FROM_HERE, {base::MayBlock()},
-      base::BindOnce(
-          [](const base::FilePath& list_file) {
-            std::optional<std::vector<uint8_t>> content =
-                base::ReadFileToBytes(list_file);
-            if (!content) {
-              return std::string();
-            }
-            return base::HexEncode(crypto::SHA256HashString(
-                std::string(content->begin(), content->end())));
-          },
-          list_file_),
-      base::BindOnce(&AdBlockSubscriptionFiltersProvider::OnContentHashComputed,
-                     weak_factory_.GetWeakPtr()));
+  // Clear the in-memory hash so ComputeCombinedHash produces a different
+  // result, forcing ShouldLoadFilterState to return true and trigger a
+  // reload. The new hash will be computed in OnDATFileDataReady when the
+  // file content is read during filter set loading.
+  content_hash_.clear();
+  NotifyObservers(engine_is_default_);
 }
 
 }  // namespace brave_shields
