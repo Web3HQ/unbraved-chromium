@@ -125,6 +125,8 @@ void AdBlockComponentFiltersProvider::OnContentHashComputed(
     ScopedDictPrefUpdate update(local_state_,
                                 prefs::kAdBlockComponentFiltersCacheTimestamp);
     update->Set(component_id_, content_hash_);
+  } else {
+    CHECK_IS_TEST();
   }
   NotifyObservers(engine_is_default_);
 
