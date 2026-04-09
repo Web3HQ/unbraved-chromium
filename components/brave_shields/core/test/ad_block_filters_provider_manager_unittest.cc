@@ -16,7 +16,7 @@
 namespace {
 
 std::string HashOf(std::string_view content) {
-  return base::NumberToString(base::PersistentHash(std::string(content)));
+  return base::NumberToString(base::FastHash(std::string(content)));
 }
 
 }  // namespace

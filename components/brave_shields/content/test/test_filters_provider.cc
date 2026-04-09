@@ -75,7 +75,7 @@ void TestFiltersProvider::Initialize() {
   CHECK(!is_initialized_);
   is_initialized_ = true;
   if (content_hash_.empty()) {
-    content_hash_ = base::NumberToString(base::PersistentHash(rules_));
+    content_hash_ = base::NumberToString(base::FastHash(rules_));
   }
   NotifyObservers(engine_is_default_);
 }
@@ -86,7 +86,7 @@ bool TestFiltersProvider::IsInitialized() const {
 
 std::optional<std::string> TestFiltersProvider::GetContentHash() const {
   if (content_hash_.empty()) {
-    return base::NumberToString(base::PersistentHash(rules_));
+    return base::NumberToString(base::FastHash(rules_));
   }
   return content_hash_;
 }

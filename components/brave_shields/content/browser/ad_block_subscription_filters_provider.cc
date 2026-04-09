@@ -106,9 +106,8 @@ void AdBlockSubscriptionFiltersProvider::OnDATFileDataReady(
   if (local_state_) {
     ScopedDictPrefUpdate update(local_state_,
                                 prefs::kAdBlockSubscriptionFiltersCacheHash);
-    update->Set(GetCacheKey(),
-                base::NumberToString(base::PersistentHash(
-                    std::string(dat_buf.begin(), dat_buf.end()))));
+    update->Set(GetCacheKey(), base::NumberToString(base::FastHash(std::string(
+                                   dat_buf.begin(), dat_buf.end()))));
   } else {
     CHECK_IS_TEST();
   }

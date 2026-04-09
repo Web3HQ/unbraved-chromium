@@ -153,8 +153,8 @@ void AdBlockComponentFiltersProvider::OnComponentReady(
             if (!content) {
               return std::string();
             }
-            return base::NumberToString(base::PersistentHash(
-                std::string(content->begin(), content->end())));
+            return base::NumberToString(
+                base::FastHash(std::string(content->begin(), content->end())));
           },
           path),
       base::BindOnce(&AdBlockComponentFiltersProvider::OnContentHashComputed,

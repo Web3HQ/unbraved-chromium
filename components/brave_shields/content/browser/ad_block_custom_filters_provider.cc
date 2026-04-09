@@ -88,10 +88,10 @@ std::optional<std::string> AdBlockCustomFiltersProvider::GetContentHash()
     const {
   if (!local_state_) {
     CHECK_IS_TEST();
-    return base::NumberToString(base::PersistentHash(std::string()));
+    return base::NumberToString(base::FastHash(std::string()));
   }
-  return base::NumberToString(base::PersistentHash(
-      local_state_->GetString(prefs::kAdBlockCustomFilters)));
+  return base::NumberToString(
+      base::FastHash(local_state_->GetString(prefs::kAdBlockCustomFilters)));
 }
 
 void AdBlockCustomFiltersProvider::CreateSiteExemption(std::string_view host) {
