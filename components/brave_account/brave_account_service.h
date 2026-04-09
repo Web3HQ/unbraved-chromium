@@ -22,6 +22,7 @@
 #include "brave/components/brave_account/endpoints/password_finalize.h"
 #include "brave/components/brave_account/endpoints/password_init.h"
 #include "brave/components/brave_account/endpoints/service_token.h"
+#include "brave/components/brave_account/endpoints/verify_complete.h"
 #include "brave/components/brave_account/endpoints/verify_resend.h"
 #include "brave/components/brave_account/endpoints/verify_result.h"
 #include "brave/components/brave_account/mojom/brave_account.mojom.h"
@@ -80,6 +81,9 @@ class BraveAccountService : public KeyedService, public mojom::Authentication {
                         const std::string& serialized_record,
                         RegisterFinalizeCallback callback) override;
 
+  void RegisterVerify(const std::string& code,
+                      RegisterVerifyCallback callback) override;
+
   void ResendConfirmationEmail(
       ResendConfirmationEmailCallback callback) override;
 
@@ -105,6 +109,9 @@ class BraveAccountService : public KeyedService, public mojom::Authentication {
   void OnRegisterFinalize(RegisterFinalizeCallback callback,
                           const std::string& encrypted_verification_token,
                           endpoints::PasswordFinalize::Response response);
+
+  void OnRegisterVerify(RegisterVerifyCallback callback,
+                        endpoints::VerifyComplete::Response response);
 
   void OnResendConfirmationEmail(ResendConfirmationEmailCallback callback,
                                  endpoints::VerifyResend::Response response);
