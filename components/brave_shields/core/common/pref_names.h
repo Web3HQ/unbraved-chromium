@@ -31,8 +31,6 @@ inline constexpr char kAdBlockDefaultCacheHash[] =
 inline constexpr char kAdBlockAdditionalCacheHash[] =
     "brave.ad_block.cache.engine1_hash";
 
-inline constexpr char kAdBlockComponentFiltersCacheHash[] =
-    "brave.ad_block.cache.component_filters_hash";
 inline constexpr char kAdBlockSubscriptionFiltersCacheHash[] =
     "brave.ad_block.cache.subscription_filters_hash";
 

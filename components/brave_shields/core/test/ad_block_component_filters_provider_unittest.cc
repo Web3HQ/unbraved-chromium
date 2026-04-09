@@ -9,15 +9,10 @@
 
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
-#include "base/functional/bind.h"
 #include "base/test/run_until.h"
 #include "base/test/task_environment.h"
 #include "brave/components/brave_shields/core/browser/ad_block_filters_provider.h"
 #include "brave/components/brave_shields/core/browser/ad_block_filters_provider_manager.h"
-#include "brave/components/brave_shields/core/common/adblock/rs/src/lib.rs.h"
-#include "brave/components/brave_shields/core/common/pref_names.h"
-#include "components/prefs/pref_registry_simple.h"
-#include "components/prefs/testing_pref_service.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace {
@@ -40,8 +35,6 @@ class AdBlockComponentFiltersProviderTest : public testing::Test {
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     ASSERT_TRUE(temp_dir2_.CreateUniqueTempDir());
-    prefs_.registry()->RegisterDictionaryPref(
-        brave_shields::prefs::kAdBlockComponentFiltersCacheHash);
   }
 
   static void SimulateComponentReady(
@@ -50,76 +43,50 @@ class AdBlockComponentFiltersProviderTest : public testing::Test {
     provider.OnComponentReady(path);
   }
 
-  // Trigger a filter set load to compute the content hash.
-  static void LoadFilterSet(
-      brave_shields::AdBlockComponentFiltersProvider& provider) {
-    provider.LoadFilterSet(base::BindOnce(
-        [](base::OnceCallback<void(rust::Box<adblock::FilterSet>*)> cb) {
-          auto filter_set = adblock::new_filter_set();
-          std::move(cb).Run(&filter_set);
-        }));
-  }
-
  protected:
   base::test::TaskEnvironment task_environment_;
   base::ScopedTempDir temp_dir_;
   base::ScopedTempDir temp_dir2_;
-  TestingPrefServiceSimple prefs_;
 };
 
 TEST_F(AdBlockComponentFiltersProviderTest,
        DifferentComponentsHaveSeparateHashes) {
   brave_shields::AdBlockFiltersProviderManager manager;
 
-  // Set up two components in different directories with different files.
-  base::FilePath list_a = temp_dir_.GetPath().AppendASCII("list.txt");
-  ASSERT_TRUE(base::WriteFile(list_a, "||from-a.com^"));
-
-  base::FilePath list_b = temp_dir2_.GetPath().AppendASCII("list.txt");
-  ASSERT_TRUE(base::WriteFile(list_b, "||from-b.com^"));
-
-  HashObserver observer_a;
   brave_shields::AdBlockComponentFiltersProvider provider_a(
-      nullptr, &manager, "component_a", "", "Component A", 0, &prefs_,
+      nullptr, &manager, "component_a", "", "Component A", 0,
       /*is_default_engine=*/true);
-  provider_a.AddObserver(&observer_a);
-  SimulateComponentReady(provider_a, temp_dir_.GetPath());
-  ASSERT_TRUE(base::test::RunUntil([&]() { return observer_a.notified(); }));
-  LoadFilterSet(provider_a);
-  task_environment_.RunUntilIdle();
-
-  HashObserver observer_b;
   brave_shields::AdBlockComponentFiltersProvider provider_b(
-      nullptr, &manager, "component_b", "", "Component B", 0, &prefs_,
+      nullptr, &manager, "component_b", "", "Component B", 0,
       /*is_default_engine=*/false);
-  provider_b.AddObserver(&observer_b);
-  SimulateComponentReady(provider_b, temp_dir2_.GetPath());
-  ASSERT_TRUE(base::test::RunUntil([&]() { return observer_b.notified(); }));
-  LoadFilterSet(provider_b);
-  task_environment_.RunUntilIdle();
 
-  // Each component should have its own content hash.
+  // Before OnComponentReady, hash should be nullopt.
+  EXPECT_FALSE(provider_a.GetContentHash().has_value());
+  EXPECT_FALSE(provider_b.GetContentHash().has_value());
+
+  // Each component gets a different path, so hashes differ.
+  SimulateComponentReady(provider_a, temp_dir_.GetPath());
+  SimulateComponentReady(provider_b, temp_dir2_.GetPath());
+
   ASSERT_TRUE(provider_a.GetContentHash().has_value());
   ASSERT_TRUE(provider_b.GetContentHash().has_value());
-  std::string hash_a = provider_a.GetContentHash().value();
-  std::string hash_b = provider_b.GetContentHash().value();
+  EXPECT_NE(provider_a.GetContentHash().value(),
+            provider_b.GetContentHash().value());
+}
 
-  EXPECT_FALSE(hash_a.empty());
-  EXPECT_FALSE(hash_b.empty());
-  EXPECT_NE(hash_a, hash_b);
+TEST_F(AdBlockComponentFiltersProviderTest, ComponentUpdateChangesHash) {
+  brave_shields::AdBlockFiltersProviderManager manager;
 
-  // Updating component A should change its hash but not component B's.
-  std::string original_hash_b = hash_b;
-  ASSERT_TRUE(base::WriteFile(list_a, "||updated-a.com^"));
-  observer_a.reset();
-  SimulateComponentReady(provider_a, temp_dir_.GetPath());
-  ASSERT_TRUE(base::test::RunUntil([&]() { return observer_a.notified(); }));
-  LoadFilterSet(provider_a);
-  task_environment_.RunUntilIdle();
+  brave_shields::AdBlockComponentFiltersProvider provider(
+      nullptr, &manager, "component_a", "", "Component A", 0,
+      /*is_default_engine=*/true);
 
-  EXPECT_NE(provider_a.GetContentHash().value(), hash_a);
-  EXPECT_EQ(provider_b.GetContentHash().value(), original_hash_b);
+  SimulateComponentReady(provider, temp_dir_.GetPath());
+  std::string original_hash = provider.GetContentHash().value();
+  ASSERT_FALSE(original_hash.empty());
 
-  provider_a.RemoveObserver(&observer_a);
-  provider_b.RemoveObserver(&observer_b);
+  // A component update with a new path (new version) changes the hash.
+  SimulateComponentReady(provider, temp_dir2_.GetPath());
+  ASSERT_TRUE(provider.GetContentHash().has_value());
+  EXPECT_NE(provider.GetContentHash().value(), original_hash);
 }
