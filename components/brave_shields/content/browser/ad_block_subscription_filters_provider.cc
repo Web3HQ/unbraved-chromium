@@ -102,8 +102,8 @@ void AdBlockSubscriptionFiltersProvider::OnDATFileDataReady(
   TRACE_EVENT("brave.adblock",
               "AdBlockSubscriptionFiltersProvider::OnDATFileDataReady", flow);
   // Compute the content hash while we have the data in hand.
-  content_hash_ = base::HexEncode(crypto::SHA256HashString(
-      std::string(dat_buf.begin(), dat_buf.end())));
+  content_hash_ = base::HexEncode(
+      crypto::SHA256HashString(std::string(dat_buf.begin(), dat_buf.end())));
   if (local_state_) {
     ScopedDictPrefUpdate update(
         local_state_, prefs::kAdBlockSubscriptionFiltersCacheTimestamp);
