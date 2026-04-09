@@ -171,3 +171,47 @@ private class AutofillDataManagerObserver: NSObject, CWVAutofillDataManagerObser
     notify()
   }
 }
+
+/// Editable snapshot of a saved login’s fields while the user is in add or edit mode.
+/// `CWVPassword` is the persisted model; this type holds the in-flight strings bound to text fields.
+
+@MainActor
+@Observable
+class ManagePasswordDraft {
+  var username: String = ""
+  var password: String = ""
+  var site: String = ""
+
+  /// Copies values from an existing credential into the draft (typically when edit mode appears).
+  func prepare(with cwvPassword: CWVPassword) {
+    username = cwvPassword.username ?? ""
+    password = cwvPassword.password ?? ""
+    site = cwvPassword.site
+  }
+
+  /// Clears all fields (e.g. after a successful save or when discarding a new-login form).
+  func reset() {
+    username = ""
+    password = ""
+    site = ""
+  }
+
+  /// Value equality on the three stored fields.
+  static func == (lhs: ManagePasswordDraft, rhs: ManagePasswordDraft) -> Bool {
+    return lhs.username == rhs.username
+      && lhs.password == rhs.password
+      && lhs.site == rhs.site
+  }
+
+  /// Value equivalency: True when the draft still matches the given credential (no unsaved edits vs. that snapshot).
+  static func === (lhs: ManagePasswordDraft, cwvPassword: CWVPassword) -> Bool {
+    return lhs.username == (cwvPassword.username ?? "")
+      && lhs.password == (cwvPassword.password ?? "")
+      && lhs.site == cwvPassword.site
+  }
+
+  /// Not equivalent with `CWVPassword`.
+  static func !== (lhs: ManagePasswordDraft, cwvPassword: CWVPassword) -> Bool {
+    return !(lhs === cwvPassword)
+  }
+}
