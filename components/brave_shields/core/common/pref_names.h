@@ -21,8 +21,6 @@ inline constexpr char kAdBlockMobileNotificationsListSettingTouched[] =
     "brave.ad_block.mobile_notifications_list_setting_touched";
 
 inline constexpr char kAdBlockCustomFilters[] = "brave.ad_block.custom_filters";
-inline constexpr char kAdBlockCustomFiltersLastModified[] =
-    "brave.ad_block.custom_filters_last_modified";
 inline constexpr char kAdBlockRegionalFilters[] =
     "brave.ad_block.regional_filters";
 inline constexpr char kAdBlockListSubscriptions[] =
@@ -33,15 +31,10 @@ inline constexpr char kAdBlockDefaultCacheHash[] =
 inline constexpr char kAdBlockAdditionalCacheHash[] =
     "brave.ad_block.cache.engine1_hash";
 
-// Old timestamp prefs — kept for migration cleanup only.
-inline constexpr char kAdBlockDefaultCacheTimestamp[] =
-    "brave.ad_block.cache.engine0";
-inline constexpr char kAdBlockAdditionalCacheTimestamp[] =
-    "brave.ad_block.cache.engine1";
-inline constexpr char kAdBlockComponentFiltersCacheTimestamp[] =
-    "brave.ad_block.cache.component_filters";
-inline constexpr char kAdBlockSubscriptionFiltersCacheTimestamp[] =
-    "brave.ad_block.cache.subscription_filters";
+inline constexpr char kAdBlockComponentFiltersCacheHash[] =
+    "brave.ad_block.cache.component_filters_hash";
+inline constexpr char kAdBlockSubscriptionFiltersCacheHash[] =
+    "brave.ad_block.cache.subscription_filters_hash";
 
 inline constexpr char kFBEmbedControlType[] = "brave.fb_embed_default";
 inline constexpr char kTwitterEmbedControlType[] =

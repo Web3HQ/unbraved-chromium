@@ -503,31 +503,17 @@ void RegisterPrefsForAdBlockService(PrefRegistrySimple* registry) {
       prefs::kAdBlockOnlyModeWasEnabledForSupportedLocale, false);
   registry->RegisterStringPref(prefs::kAdBlockDefaultCacheHash, "");
   registry->RegisterStringPref(prefs::kAdBlockAdditionalCacheHash, "");
+  registry->RegisterDictionaryPref(prefs::kAdBlockComponentFiltersCacheHash);
+  registry->RegisterDictionaryPref(prefs::kAdBlockSubscriptionFiltersCacheHash);
 }
 
 void RegisterPrefsForAdBlockServiceForMigration(PrefRegistrySimple* registry) {
   registry->RegisterBooleanPref(prefs::kAdBlockCookieListOptInShown, false);
-  registry->RegisterTimePref(prefs::kAdBlockCustomFiltersLastModified,
-                             base::Time());
-  registry->RegisterTimePref(prefs::kAdBlockDefaultCacheTimestamp,
-                             base::Time());
-  registry->RegisterTimePref(prefs::kAdBlockAdditionalCacheTimestamp,
-                             base::Time());
-  registry->RegisterDictionaryPref(
-      prefs::kAdBlockComponentFiltersCacheTimestamp);
-  registry->RegisterDictionaryPref(
-      prefs::kAdBlockSubscriptionFiltersCacheTimestamp);
 }
 
 void MigrateObsoletePrefsForAdBlockService(PrefService* local_state) {
   // Added 2025-07-11
   local_state->ClearPref(prefs::kAdBlockCookieListOptInShown);
-  // Added 2026-04-02
-  local_state->ClearPref(prefs::kAdBlockCustomFiltersLastModified);
-  local_state->ClearPref(prefs::kAdBlockDefaultCacheTimestamp);
-  local_state->ClearPref(prefs::kAdBlockAdditionalCacheTimestamp);
-  local_state->ClearPref(prefs::kAdBlockComponentFiltersCacheTimestamp);
-  local_state->ClearPref(prefs::kAdBlockSubscriptionFiltersCacheTimestamp);
 }
 
 AdBlockDefaultResourceProvider* AdBlockService::default_resource_provider() {

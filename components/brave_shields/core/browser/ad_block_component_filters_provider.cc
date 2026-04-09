@@ -125,7 +125,7 @@ void AdBlockComponentFiltersProvider::OnContentHashComputed(
 
   if (local_state_) {
     ScopedDictPrefUpdate update(local_state_,
-                                prefs::kAdBlockComponentFiltersCacheTimestamp);
+                                prefs::kAdBlockComponentFiltersCacheHash);
     update->Set(component_id_, content_hash_);
   } else {
     CHECK_IS_TEST();
@@ -179,7 +179,7 @@ std::optional<std::string> AdBlockComponentFiltersProvider::GetContentHash()
   // On startup, before OnComponentReady fires, read persisted hash from prefs.
   if (local_state_) {
     const auto& dict =
-        local_state_->GetDict(prefs::kAdBlockComponentFiltersCacheTimestamp);
+        local_state_->GetDict(prefs::kAdBlockComponentFiltersCacheHash);
     const std::string* stored = dict.FindString(GetCacheKey());
     if (stored) {
       return *stored;

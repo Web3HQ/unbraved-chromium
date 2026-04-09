@@ -87,7 +87,7 @@ std::optional<std::string> AdBlockSubscriptionFiltersProvider::GetContentHash()
   }
   if (local_state_) {
     const auto& dict =
-        local_state_->GetDict(prefs::kAdBlockSubscriptionFiltersCacheTimestamp);
+        local_state_->GetDict(prefs::kAdBlockSubscriptionFiltersCacheHash);
     const std::string* stored = dict.FindString(GetCacheKey());
     if (stored) {
       return *stored;
@@ -107,8 +107,8 @@ void AdBlockSubscriptionFiltersProvider::OnDATFileDataReady(
   content_hash_ = base::HexEncode(
       crypto::SHA256HashString(std::string(dat_buf.begin(), dat_buf.end())));
   if (local_state_) {
-    ScopedDictPrefUpdate update(
-        local_state_, prefs::kAdBlockSubscriptionFiltersCacheTimestamp);
+    ScopedDictPrefUpdate update(local_state_,
+                                prefs::kAdBlockSubscriptionFiltersCacheHash);
     update->Set(GetCacheKey(), content_hash_);
   }
 
