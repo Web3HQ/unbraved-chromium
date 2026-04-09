@@ -17,6 +17,7 @@
 #include "base/feature_list.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
+#include "base/files/important_file_writer.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
 #include "base/functional/callback_forward.h"
@@ -357,7 +358,10 @@ void AdBlockService::OnEngineLoaded(bool is_default_engine,
             if (!base::CreateDirectory(cache_path.DirName())) {
               return false;
             }
-            return base::WriteFile(cache_path, dat);
+            return base::ImportantFileWriter::WriteFileAtomically(
+                cache_path,
+                std::string_view(reinterpret_cast<const char*>(dat.data()),
+                                 dat.size()));
           },
           std::move(serialized_dat),
           profile_dir_.AppendASCII(kAdblockCacheDir)
