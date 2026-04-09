@@ -120,12 +120,11 @@ void AdBlockComponentFiltersProvider::OnContentHashComputed(
     std::string content_hash) {
   base::FilePath old_path = component_path_;
   component_path_ = path;
-  content_hash_ = std::move(content_hash);
 
   if (local_state_) {
     ScopedDictPrefUpdate update(local_state_,
                                 prefs::kAdBlockComponentFiltersCacheHash);
-    update->Set(component_id_, content_hash_);
+    update->Set(component_id_, content_hash);
   } else {
     CHECK_IS_TEST();
   }
@@ -172,10 +171,6 @@ std::string AdBlockComponentFiltersProvider::GetCacheKey() const {
 
 std::optional<std::string> AdBlockComponentFiltersProvider::GetContentHash()
     const {
-  if (!content_hash_.empty()) {
-    return content_hash_;
-  }
-  // On startup, before OnComponentReady fires, read persisted hash from prefs.
   if (!local_state_) {
     CHECK_IS_TEST();
     return std::nullopt;

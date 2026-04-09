@@ -90,7 +90,6 @@ class AdBlockComponentFiltersProvider : public AdBlockFiltersProvider {
   std::string GetCacheKey() const;
 
   base::FilePath component_path_;
-  std::string content_hash_;
   std::string component_id_;
   uint8_t permission_mask_;
   const raw_ptr<component_updater::ComponentUpdateService>
