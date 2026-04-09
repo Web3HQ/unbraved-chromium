@@ -144,8 +144,6 @@ class AdBlockServiceTestBase : public testing::Test {
                    cb) { std::move(cb).Run(manager); },
             download_manager_.get()),
         profile_dir_.GetPath());
-    service->default_resource_provider()->OverrideResourcesForTesting(
-        adblock::new_empty_resource_storage());
     service->custom_resource_provider()->OverrideResourcesForTesting(
         adblock::new_empty_resource_storage());
     return service;
