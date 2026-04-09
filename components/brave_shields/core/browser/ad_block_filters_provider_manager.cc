@@ -16,6 +16,7 @@
 #include "base/location.h"
 #include "base/notreached.h"
 #include "base/rand_util.h"
+#include "base/strings/string_util.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/trace_event/trace_event.h"
 #include "brave/components/brave_shields/core/browser/ad_block_filters_provider.h"
@@ -82,14 +83,7 @@ std::string AdBlockFiltersProviderManager::ComputeCombinedHash(
     hashes.push_back(provider->GetContentHash());
   }
   std::sort(hashes.begin(), hashes.end());
-  std::string combined;
-  for (size_t i = 0; i < hashes.size(); i++) {
-    if (i > 0) {
-      combined += "|";
-    }
-    combined += hashes[i];
-  }
-  return combined;
+  return base::JoinString(hashes, "|");
 }
 
 void AdBlockFiltersProviderManager::OnChanged(bool is_for_default_engine) {
