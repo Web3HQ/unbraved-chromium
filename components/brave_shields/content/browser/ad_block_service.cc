@@ -134,7 +134,7 @@ void AdBlockService::SourceProviderObserver::LoadResources() {
 
 void AdBlockService::SourceProviderObserver::OnDATFileLoaded(
     DATFileDataBuffer dat) {
-  dat_ = std::move(dat);
+  dat_.emplace(std::move(dat));
   LoadResources();
 }
 
@@ -148,7 +148,7 @@ void AdBlockService::SourceProviderObserver::OnFilterSetCreated(
 void AdBlockService::SourceProviderObserver::OnResourcesLoaded(
     AdblockResourceStorageBox storage) {
   on_resources_loaded_.Run(
-      engine_is_default_, std::exchange(dat_, DATFileDataBuffer()),
+      engine_is_default_, std::exchange(dat_, std::nullopt),
       std::exchange(filter_set_, nullptr), std::move(storage));
 }
 
@@ -280,18 +280,19 @@ AdBlockService::~AdBlockService() {
 
 void AdBlockService::OnResourcesLoaded(
     bool is_default_engine,
-    DATFileDataBuffer dat,
+    std::optional<DATFileDataBuffer> dat,
     std::unique_ptr<rust::Box<adblock::FilterSet>> filter_set,
     AdblockResourceStorageBox storage) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  if (!dat.empty()) {
+  if (dat.has_value()) {
     if (allow_load_dat_loading_) {
       task_runner_->PostTaskAndReplyWithResult(
           FROM_HERE,
           base::BindOnce(&AdBlockEngineWrapper::LoadDAT,
                          base::Unretained(engine_wrapper_.get()),
-                         is_default_engine, std::move(dat), std::move(storage)),
+                         is_default_engine, std::move(*dat),
+                         std::move(storage)),
           base::BindOnce(&AdBlockService::NotifyOnDATLoaded,
                          weak_factory_.GetWeakPtr(), is_default_engine));
     } else {

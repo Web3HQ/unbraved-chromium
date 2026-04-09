@@ -80,7 +80,7 @@ class AdBlockService {
     // If filter_set is non-null, calls Load; otherwise calls UseResources.
     using OnResourcesLoadedCallback = base::RepeatingCallback<void(
         bool,
-        DATFileDataBuffer,
+        std::optional<DATFileDataBuffer>,
         std::unique_ptr<rust::Box<adblock::FilterSet>>,
         AdblockResourceStorageBox)>;
     using ShouldLoadFilterSetCallback = base::RepeatingCallback<bool()>;
@@ -116,7 +116,7 @@ class AdBlockService {
     const bool engine_is_default_;
 
     std::unique_ptr<rust::Box<adblock::FilterSet>> filter_set_;
-    DATFileDataBuffer dat_;
+    std::optional<DATFileDataBuffer> dat_;
     scoped_refptr<base::SequencedTaskRunner> task_runner_;
 
     raw_ptr<AdBlockResourceProvider> resource_provider_ = nullptr;  // not owned
@@ -199,7 +199,7 @@ class AdBlockService {
 
   void OnResourcesLoaded(
       bool is_default_engine,
-      DATFileDataBuffer dat,
+      std::optional<DATFileDataBuffer> dat,
       std::unique_ptr<rust::Box<adblock::FilterSet>> filter_set,
       AdblockResourceStorageBox storage);
 
