@@ -110,9 +110,6 @@ struct BraveShieldsSetting
             kDefaultValue);
       }
     }
-    LOG(ERROR) << "ShieldSetting " << BraveShieldsSetting::kName
-               << " failed to parse value: " << value.DebugString();
-    DCHECK(false) << "Invalid value.";
     return kDefaultValue;
   }
 };
