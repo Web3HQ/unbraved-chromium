@@ -520,9 +520,10 @@ TEST_F(AdBlockServiceQueuedTest, FilterSetLoadingBlocksDATLoading) {
     }
   }
   ASSERT_FALSE(service->GetAllowDatLoadingForTesting());
-  ASSERT_EQ(prefs_.GetString(prefs::kAdBlockAdditionalCacheHash), "");
 
-  base::RunLoop().RunUntilIdle();
+  // Drain thread pool (DAT serialize + write) and main thread (OnDatCached
+  // reply) so the cache hash pref is written.
+  task_environment_.RunUntilIdle();
   ASSERT_NE(prefs_.GetString(prefs::kAdBlockAdditionalCacheHash), "");
 
   base::RunLoop on_read_cached_dat_files_run_loop;

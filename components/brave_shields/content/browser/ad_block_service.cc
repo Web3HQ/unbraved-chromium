@@ -298,32 +298,25 @@ void AdBlockService::OnResourcesLoaded(
       NotifyOnDATLoaded(is_default_engine, false);
     }
   } else if (base::FeatureList::IsEnabled(features::kAdblockDATCache)) {
+    // Load the filter set on the engine's task runner, then serialize and
+    // write the DAT cache on a thread pool to avoid blocking the engine.
     task_runner_->PostTaskAndReplyWithResult(
         FROM_HERE,
         base::BindOnce(
             [](AdBlockEngineWrapper* engine_wrapper, bool is_default_engine,
                std::unique_ptr<rust::Box<adblock::FilterSet>> filter_set,
-               AdblockResourceStorageBox storage, base::FilePath cache_dir) {
+               AdblockResourceStorageBox storage) -> DATFileDataBuffer {
               if (!engine_wrapper->Load(is_default_engine,
                                         std::move(filter_set),
                                         std::move(storage))) {
-                return false;
+                return {};
               }
-
-              if (!base::CreateDirectory(cache_dir)) {
-                return false;
-              }
-              return base::WriteFile(
-                  cache_dir.AppendASCII(is_default_engine
-                                            ? kAdBlockEngine0DATCache
-                                            : kAdBlockEngine1DATCache),
-                  engine_wrapper->Serialize(is_default_engine));
+              return engine_wrapper->Serialize(is_default_engine);
             },
             base::Unretained(engine_wrapper_.get()), is_default_engine,
-            std::move(filter_set), std::move(storage),
-            profile_dir_.AppendASCII(kAdblockCacheDir)),
-        base::BindOnce(&AdBlockService::OnDatCached, weak_factory_.GetWeakPtr(),
-                       is_default_engine));
+            std::move(filter_set), std::move(storage)),
+        base::BindOnce(&AdBlockService::OnEngineLoaded,
+                       weak_factory_.GetWeakPtr(), is_default_engine));
     // Block DAT loading if a FilterList has been loaded already
     allow_load_dat_loading_ = false;
   } else {
@@ -346,6 +339,31 @@ void AdBlockService::NotifyOnDATLoaded(bool is_default_engine, bool success) {
   for (auto& observer : observers_) {
     observer.OnDATFileLoaded(is_default_engine, success);
   }
+}
+
+void AdBlockService::OnEngineLoaded(bool is_default_engine,
+                                    DATFileDataBuffer serialized_dat) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (serialized_dat.empty()) {
+    OnDatCached(is_default_engine, false);
+    return;
+  }
+  base::ThreadPool::PostTaskAndReplyWithResult(
+      FROM_HERE,
+      {base::MayBlock(), base::TaskShutdownBehavior::SKIP_ON_SHUTDOWN},
+      base::BindOnce(
+          [](DATFileDataBuffer dat, base::FilePath cache_path) {
+            if (!base::CreateDirectory(cache_path.DirName())) {
+              return false;
+            }
+            return base::WriteFile(cache_path, dat);
+          },
+          std::move(serialized_dat),
+          profile_dir_.AppendASCII(kAdblockCacheDir)
+              .AppendASCII(is_default_engine ? kAdBlockEngine0DATCache
+                                             : kAdBlockEngine1DATCache)),
+      base::BindOnce(&AdBlockService::OnDatCached, weak_factory_.GetWeakPtr(),
+                     is_default_engine));
 }
 
 void AdBlockService::OnDatCached(bool is_default_engine, bool success) {
