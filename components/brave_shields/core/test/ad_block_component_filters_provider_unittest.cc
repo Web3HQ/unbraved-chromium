@@ -12,10 +12,10 @@
 #include "base/test/run_until.h"
 #include "base/test/task_environment.h"
 #include "brave/components/brave_shields/core/browser/ad_block_filters_provider.h"
+#include "brave/components/brave_shields/core/browser/ad_block_filters_provider_manager.h"
 #include "brave/components/brave_shields/core/common/pref_names.h"
 #include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/testing_pref_service.h"
-#include "brave/components/brave_shields/core/browser/ad_block_filters_provider_manager.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace {
