@@ -134,10 +134,9 @@ void AdBlockSubscriptionFiltersProvider::OnDATFileDataReady(
 }
 
 void AdBlockSubscriptionFiltersProvider::OnListAvailable() {
-  // Clear the persisted hash so ComputeCombinedHash produces a different
-  // result, forcing ShouldLoadFilterState to return true and trigger a
-  // reload. The new hash will be computed in OnDATFileDataReady when the
-  // file content is read during filter set loading.
+  // Clear the persisted hash so the combined cache key changes, forcing
+  // ShouldLoadFilterState to return true and trigger a reload. The new hash
+  // will be computed in OnDATFileDataReady when the file content is read.
   if (local_state_) {
     ScopedDictPrefUpdate update(local_state_,
                                 prefs::kAdBlockSubscriptionFiltersCacheHash);

@@ -441,6 +441,42 @@ TEST_F(AdBlockServiceTest, DifferentProviderContentTriggersReload) {
   EXPECT_TRUE(result.matched);
 }
 
+TEST_F(AdBlockServiceTest, ProviderWithNulloptCacheKeyTriggersReload) {
+  // When a provider's GetCacheKey() returns nullopt (e.g. after invalidation),
+  // the filter set should still reload rather than being blocked. This tests
+  // that the hash computation in ShouldLoadFilterState handles nullopt
+  // providers correctly.
+  auto service = CreateService();
+
+  bool default_filter_list_loaded = false;
+  FilterListObserver observer(
+      base::BindLambdaForTesting([&](bool is_default, bool success) {
+        if (is_default) {
+          default_filter_list_loaded = success;
+        }
+      }));
+  service->AddObserver(&observer);
+
+  // Register a provider that returns nullopt from GetCacheKey(), simulating
+  // a provider whose cache key has been invalidated (e.g. subscription after
+  // download).
+  auto provider =
+      std::make_unique<TestFiltersProvider>("||reloaded-rule.com^",
+                                            /*engine_is_default=*/true);
+  provider->set_cache_key_nullopt();
+  provider->RegisterAsSourceProvider(service.get());
+
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return default_filter_list_loaded;
+  })) << "Timeout: filter set should load even when a provider has no "
+         "cache key";
+
+  auto result = service->GetDefaultEngineForTesting().ShouldStartRequest(
+      GURL("https://reloaded-rule.com/script.js"),
+      blink::mojom::ResourceType::kScript, "test.com", false, false, false);
+  EXPECT_TRUE(result.matched);
+}
+
 TEST_F(AdBlockServiceQueuedTest, FilterSetLoadingBlocksDATLoading) {
   // Create cached DAT files with specific rules for the default engine.
   CreateCachedDATFiles("||blocked-by-dat.com^\n", "");

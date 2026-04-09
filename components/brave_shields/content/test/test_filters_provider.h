@@ -41,12 +41,14 @@ class TestFiltersProvider : public AdBlockFiltersProvider {
 
   std::optional<std::string> GetCacheKey() const override;
   void set_cache_key(const std::string& hash) { content_hash_ = hash; }
+  void set_cache_key_nullopt() { force_nullopt_cache_key_ = true; }
 
  private:
   std::string rules_;
   uint8_t permission_mask_;
   bool is_initialized_;
   std::string content_hash_;
+  bool force_nullopt_cache_key_ = false;
 };
 
 }  // namespace brave_shields

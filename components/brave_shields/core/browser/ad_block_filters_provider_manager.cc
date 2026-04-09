@@ -77,9 +77,6 @@ std::optional<std::string> AdBlockFiltersProviderManager::ComputeCombinedHash(
                                 : additional_engine_filters_providers_;
   std::vector<std::string> hashes;
   for (auto* const& provider : filters_providers) {
-    if (!provider->IsInitialized()) {
-      return std::nullopt;
-    }
     auto hash = provider->GetCacheKey();
     if (!hash.has_value()) {
       return std::nullopt;
@@ -91,10 +88,6 @@ std::optional<std::string> AdBlockFiltersProviderManager::ComputeCombinedHash(
 }
 
 void AdBlockFiltersProviderManager::OnChanged(bool is_for_default_engine) {
-  if (!ComputeCombinedHash(is_for_default_engine).has_value()) {
-    // At least one provider is not initialized yet.
-    return;
-  }
   NotifyObservers(is_for_default_engine);
 }
 
