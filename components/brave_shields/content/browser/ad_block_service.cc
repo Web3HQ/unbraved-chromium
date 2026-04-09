@@ -11,7 +11,6 @@
 #include <string_view>
 #include <utility>
 
-#include "base/check.h"
 #include "base/check_is_test.h"
 #include "base/debug/leak_annotations.h"
 #include "base/feature_list.h"
@@ -25,9 +24,9 @@
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/sequence_checker.h"
+#include "base/strings/string_view_util.h"
 #include "base/task/thread_pool.h"
 #include "base/trace_event/trace_event.h"
-#include "brave/components/brave_component_updater/browser/dat_file_util.h"
 #include "brave/components/brave_shields/content/browser/ad_block_custom_filters_provider.h"
 #include "brave/components/brave_shields/content/browser/ad_block_engine.h"
 #include "brave/components/brave_shields/content/browser/ad_block_engine_wrapper.h"
@@ -359,9 +358,7 @@ void AdBlockService::OnEngineLoaded(bool is_default_engine,
               return false;
             }
             return base::ImportantFileWriter::WriteFileAtomically(
-                cache_path,
-                std::string_view(reinterpret_cast<const char*>(dat.data()),
-                                 dat.size()));
+                cache_path, base::as_string_view(dat));
           },
           std::move(serialized_dat),
           profile_dir_.AppendASCII(kAdblockCacheDir)
