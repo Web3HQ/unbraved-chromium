@@ -61,17 +61,16 @@ TEST_F(AdBlockComponentFiltersProviderTest,
       /*is_default_engine=*/false);
 
   // Before OnComponentReady, hash should be nullopt.
-  EXPECT_FALSE(provider_a.GetContentHash().has_value());
-  EXPECT_FALSE(provider_b.GetContentHash().has_value());
+  EXPECT_FALSE(provider_a.GetCacheKey().has_value());
+  EXPECT_FALSE(provider_b.GetCacheKey().has_value());
 
   // Each component gets a different path, so hashes differ.
   SimulateComponentReady(provider_a, temp_dir_.GetPath());
   SimulateComponentReady(provider_b, temp_dir2_.GetPath());
 
-  ASSERT_TRUE(provider_a.GetContentHash().has_value());
-  ASSERT_TRUE(provider_b.GetContentHash().has_value());
-  EXPECT_NE(provider_a.GetContentHash().value(),
-            provider_b.GetContentHash().value());
+  ASSERT_TRUE(provider_a.GetCacheKey().has_value());
+  ASSERT_TRUE(provider_b.GetCacheKey().has_value());
+  EXPECT_NE(provider_a.GetCacheKey().value(), provider_b.GetCacheKey().value());
 }
 
 TEST_F(AdBlockComponentFiltersProviderTest, ComponentUpdateChangesHash) {
@@ -82,11 +81,11 @@ TEST_F(AdBlockComponentFiltersProviderTest, ComponentUpdateChangesHash) {
       /*is_default_engine=*/true);
 
   SimulateComponentReady(provider, temp_dir_.GetPath());
-  std::string original_hash = provider.GetContentHash().value();
+  std::string original_hash = provider.GetCacheKey().value();
   ASSERT_FALSE(original_hash.empty());
 
   // A component update with a new path (new version) changes the hash.
   SimulateComponentReady(provider, temp_dir2_.GetPath());
-  ASSERT_TRUE(provider.GetContentHash().has_value());
-  EXPECT_NE(provider.GetContentHash().value(), original_hash);
+  ASSERT_TRUE(provider.GetCacheKey().has_value());
+  EXPECT_NE(provider.GetCacheKey().value(), original_hash);
 }

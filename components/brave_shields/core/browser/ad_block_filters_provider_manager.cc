@@ -80,7 +80,7 @@ std::optional<std::string> AdBlockFiltersProviderManager::ComputeCombinedHash(
     if (!provider->IsInitialized()) {
       return std::nullopt;
     }
-    auto hash = provider->GetContentHash();
+    auto hash = provider->GetCacheKey();
     if (!hash.has_value()) {
       return std::nullopt;
     }
@@ -140,8 +140,7 @@ void RunAllResults(
   }
 }
 
-std::optional<std::string> AdBlockFiltersProviderManager::GetContentHash()
-    const {
+std::optional<std::string> AdBlockFiltersProviderManager::GetCacheKey() const {
   NOTREACHED();
 }
 

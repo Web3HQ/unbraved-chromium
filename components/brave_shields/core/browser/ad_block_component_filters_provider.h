@@ -75,7 +75,7 @@ class AdBlockComponentFiltersProvider : public AdBlockFiltersProvider {
 
   bool IsInitialized() const override;
 
-  std::optional<std::string> GetContentHash() const override;
+  std::optional<std::string> GetCacheKey() const override;
 
  private:
   friend class ::AdBlockComponentFiltersProviderTest;

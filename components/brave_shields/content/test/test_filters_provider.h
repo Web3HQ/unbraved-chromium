@@ -39,8 +39,8 @@ class TestFiltersProvider : public AdBlockFiltersProvider {
 
   std::string GetNameForDebugging() override;
 
-  std::optional<std::string> GetContentHash() const override;
-  void set_content_hash(const std::string& hash) { content_hash_ = hash; }
+  std::optional<std::string> GetCacheKey() const override;
+  void set_cache_key(const std::string& hash) { content_hash_ = hash; }
 
  private:
   std::string rules_;

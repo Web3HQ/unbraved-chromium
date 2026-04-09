@@ -54,7 +54,7 @@ class AdBlockCustomFiltersProvider : public AdBlockFiltersProvider {
 
   std::string GetNameForDebugging() override;
 
-  std::optional<std::string> GetContentHash() const override;
+  std::optional<std::string> GetCacheKey() const override;
 
  private:
   void AppendCustomFilter(std::string_view filter);

@@ -49,7 +49,7 @@ std::string AdBlockLocalhostFiltersProvider::GetNameForDebugging() {
   return "AdBlockLocalhostFiltersProvider";
 }
 
-std::optional<std::string> AdBlockLocalhostFiltersProvider::GetContentHash()
+std::optional<std::string> AdBlockLocalhostFiltersProvider::GetCacheKey()
     const {
   static const base::NoDestructor<std::string> hash(
       base::NumberToString(base::FastHash(std::string(

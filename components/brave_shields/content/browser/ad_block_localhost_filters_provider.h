@@ -38,7 +38,7 @@ class AdBlockLocalhostFiltersProvider : public AdBlockFiltersProvider {
 
   std::string GetNameForDebugging() override;
 
-  std::optional<std::string> GetContentHash() const override;
+  std::optional<std::string> GetCacheKey() const override;
 
  private:
   SEQUENCE_CHECKER(sequence_checker_);

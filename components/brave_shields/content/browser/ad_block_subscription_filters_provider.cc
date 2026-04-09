@@ -83,11 +83,11 @@ std::string AdBlockSubscriptionFiltersProvider::GetNameForDebugging() {
   return "AdBlockSubscriptionFiltersProvider";
 }
 
-std::string AdBlockSubscriptionFiltersProvider::GetCacheKey() const {
+std::string AdBlockSubscriptionFiltersProvider::GetPrefKey() const {
   return list_file_.BaseName().RemoveExtension().MaybeAsASCII();
 }
 
-std::optional<std::string> AdBlockSubscriptionFiltersProvider::GetContentHash()
+std::optional<std::string> AdBlockSubscriptionFiltersProvider::GetCacheKey()
     const {
   if (!local_state_) {
     CHECK_IS_TEST();
@@ -95,7 +95,7 @@ std::optional<std::string> AdBlockSubscriptionFiltersProvider::GetContentHash()
   }
   const auto& dict =
       local_state_->GetDict(prefs::kAdBlockSubscriptionFiltersCacheHash);
-  const std::string* stored = dict.FindString(GetCacheKey());
+  const std::string* stored = dict.FindString(GetPrefKey());
   if (stored) {
     return *stored;
   }
@@ -113,7 +113,7 @@ void AdBlockSubscriptionFiltersProvider::OnDATFileDataReady(
   if (local_state_) {
     ScopedDictPrefUpdate update(local_state_,
                                 prefs::kAdBlockSubscriptionFiltersCacheHash);
-    update->Set(GetCacheKey(), result.second);
+    update->Set(GetPrefKey(), result.second);
   } else {
     CHECK_IS_TEST();
   }
@@ -141,7 +141,7 @@ void AdBlockSubscriptionFiltersProvider::OnListAvailable() {
   if (local_state_) {
     ScopedDictPrefUpdate update(local_state_,
                                 prefs::kAdBlockSubscriptionFiltersCacheHash);
-    update->Remove(GetCacheKey());
+    update->Remove(GetPrefKey());
   }
   NotifyObservers(engine_is_default_);
 }

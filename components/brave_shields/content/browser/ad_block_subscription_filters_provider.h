@@ -50,7 +50,7 @@ class AdBlockSubscriptionFiltersProvider : public AdBlockFiltersProvider {
 
   void OnListAvailable();
 
-  std::optional<std::string> GetContentHash() const override;
+  std::optional<std::string> GetCacheKey() const override;
 
  private:
   void OnDATFileDataReady(
@@ -61,7 +61,7 @@ class AdBlockSubscriptionFiltersProvider : public AdBlockFiltersProvider {
 
   std::string GetNameForDebugging() override;
 
-  std::string GetCacheKey() const;
+  std::string GetPrefKey() const;
 
   base::FilePath list_file_;
   const raw_ptr<PrefService> local_state_;

@@ -124,7 +124,7 @@ bool AdBlockComponentFiltersProvider::IsInitialized() const {
   return !component_path_.empty();
 }
 
-std::optional<std::string> AdBlockComponentFiltersProvider::GetContentHash()
+std::optional<std::string> AdBlockComponentFiltersProvider::GetCacheKey()
     const {
   if (component_path_.empty()) {
     return std::nullopt;

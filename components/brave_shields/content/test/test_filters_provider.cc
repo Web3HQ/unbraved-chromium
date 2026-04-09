@@ -84,7 +84,7 @@ bool TestFiltersProvider::IsInitialized() const {
   return is_initialized_;
 }
 
-std::optional<std::string> TestFiltersProvider::GetContentHash() const {
+std::optional<std::string> TestFiltersProvider::GetCacheKey() const {
   if (content_hash_.empty()) {
     return base::NumberToString(base::FastHash(rules_));
   }

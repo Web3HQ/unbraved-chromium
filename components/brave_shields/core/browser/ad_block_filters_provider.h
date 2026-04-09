@@ -56,7 +56,7 @@ class AdBlockFiltersProvider {
   // ready at creation time.
   virtual bool IsInitialized() const;
 
-  virtual std::optional<std::string> GetContentHash() const = 0;
+  virtual std::optional<std::string> GetCacheKey() const = 0;
 
  protected:
   bool engine_is_default_;
