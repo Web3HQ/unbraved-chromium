@@ -198,7 +198,6 @@ TEST(FeatureDefaultsTest, DisabledFeatures) {
       &metrics::private_metrics::kPrivateMetricsFeature,
       &metrics::structured::kPhoneHubStructuredMetrics,
       &net::features::kEnableWebTransportDraft07,
-      &net::features::kTpcdMetadataGrants,
       &net::features::kWaitForFirstPartySetsInit,
       &network::features::kBrowsingTopics,
       &network::features::kInterestGroupStorage,

@@ -2320,13 +2320,6 @@
 -ProfileMenuClickTest_SingleProfileWithCustomName_UnoDisabled.*
 -ProfileMenuClickTest_SingleProfileWithCustomName_UnoEnabled.*
 
-# This test fails because we disable kTpcdMetadataGrants
--All/ManagerPrefsBrowserTest.NoSpecificBlockedCookieSpecs*
--All/ManagerPrefsBrowserTest.RelevantUserCookieSpecsPrecede/*
--GetAffectedUrlsForThirdPartyCookieMetadataTest.*
--ManagerBrowserTest.TpcdDtGracePeriodEnforced_InValidDtToken
--PrivacySandboxInternalsMojoTest.GetTpcdMetadataGrants
-
 # These tests fail because we override prefs::kSearchSuggestEnabled to false.
 -All/OmniboxSearchAggregatorHTTPErrorTest.HTTPErrorResponse/*
 -All/NavigationPredictorPreconnectClientBrowserTestWithSearch.PreconnectSearchWithFeature/*
