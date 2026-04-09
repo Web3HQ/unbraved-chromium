@@ -622,11 +622,10 @@ TEST_F(AdBlockServiceQueuedTest, MatchingCacheHashSkipsFilterSetLoad) {
   auto provider = std::make_unique<TestFiltersProvider>(
       "||from-filter-set.com^", /*engine_is_default=*/true);
   provider->RegisterAsSourceProvider(service.get());
-  prefs_.SetString(
-      prefs::kAdBlockDefaultCacheHash,
-      service->GetFiltersProviderManagerForTesting()
-          ->ComputeCombinedHash(true)
-          .value_or(""));
+  prefs_.SetString(prefs::kAdBlockDefaultCacheHash,
+                   service->GetFiltersProviderManagerForTesting()
+                       ->ComputeCombinedHash(true)
+                       .value_or(""));
 
   // Drain tasks from the provider registration.
   while (service_task_runner->HasPendingTask()) {

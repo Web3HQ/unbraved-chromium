@@ -204,8 +204,7 @@ class AdBlockService {
       AdblockResourceStorageBox storage);
 
   void NotifyOnDATLoaded(bool is_default_engine, bool success);
-  void OnEngineLoaded(bool is_default_engine,
-                      DATFileDataBuffer serialized_dat);
+  void OnEngineLoaded(bool is_default_engine, DATFileDataBuffer serialized_dat);
   void OnDatCached(bool is_default_engine, bool success);
   void OnReadCachedDATFiles(
       std::pair<std::optional<DATFileDataBuffer>,
