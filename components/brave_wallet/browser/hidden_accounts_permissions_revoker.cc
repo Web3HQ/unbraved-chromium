@@ -3,12 +3,13 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-#include "brave/components/brave_wallet/browser/brave_wallet_hidden_accounts_permissions_revoker.h"
+#include "brave/components/brave_wallet/browser/hidden_accounts_permissions_revoker.h"
 
 #include "base/functional/bind.h"
 #include "base/strings/string_util.h"
 #include "brave/components/brave_wallet/browser/brave_wallet_service_delegate.h"
 #include "brave/components/brave_wallet/browser/brave_wallet_utils.h"
+#include "brave/components/brave_wallet/browser/keyring_service.h"
 #include "brave/components/brave_wallet/browser/permission_utils.h"
 #include "url/gurl.h"
 #include "url/origin.h"
@@ -17,44 +18,56 @@ namespace brave_wallet {
 
 BraveWalletHiddenAccountsPermissionsRevoker::
     BraveWalletHiddenAccountsPermissionsRevoker(
+        KeyringService& keyring_service,
         BraveWalletServiceDelegate& delegate)
-    : delegate_(delegate) {}
+    : keyring_service_(keyring_service), delegate_(delegate) {
+  keyring_service_->AddObserver(
+      keyring_service_observer_receiver_.BindNewPipeAndPassRemote());
+  for (const auto& account : keyring_service_->GetHiddenAccountsSync()) {
+    hidden_account_identifiers_.insert(
+        GetAccountPermissionIdentifier(account->account_id));
+  }
+}
 
 BraveWalletHiddenAccountsPermissionsRevoker::
     ~BraveWalletHiddenAccountsPermissionsRevoker() = default;
 
-void BraveWalletHiddenAccountsPermissionsRevoker::RevokeHiddenAccountPermisson(
-    const mojom::AccountIdPtr& account_id,
-    base::OnceCallback<void(bool)> callback) {
-  const auto request_type = CoinTypeToPermissionRequestType(account_id->coin);
-  if (!request_type) {
-    std::move(callback).Run(false);
-    return;
+void BraveWalletHiddenAccountsPermissionsRevoker::AccountsChanged() {
+  RevokePermissionsForHiddenAccounts(keyring_service_->GetHiddenAccountsSync());
+}
+
+void BraveWalletHiddenAccountsPermissionsRevoker::
+    RevokePermissionsForHiddenAccounts(
+        std::vector<mojom::AccountInfoPtr> hidden_accounts) {
+  base::flat_set<std::string> new_hidden_account_identifiers;
+  for (const auto& account : hidden_accounts) {
+    const std::string hidden_account_identifier =
+        GetAccountPermissionIdentifier(account->account_id);
+    new_hidden_account_identifiers.insert(hidden_account_identifier);
+
+    if (!hidden_account_identifiers_.contains(hidden_account_identifier)) {
+      delegate_->GetWebSitesWithPermission(
+          account->account_id->coin,
+          base::BindOnce(&BraveWalletHiddenAccountsPermissionsRevoker::
+                             ResolveWebsitePermissionsForHiddenAccount,
+                         weak_ptr_factory_.GetWeakPtr(),
+                         account->account_id->coin, hidden_account_identifier));
+    }
   }
 
-  const std::string hidden_account_identifier =
-      GetAccountPermissionIdentifier(account_id);
-  delegate_->GetWebSitesWithPermission(
-      account_id->coin,
-      base::BindOnce(&BraveWalletHiddenAccountsPermissionsRevoker::
-                         ResolveWebsitePermissionsForHiddenAccount,
-                     weak_ptr_factory_.GetWeakPtr(), account_id->coin,
-                     hidden_account_identifier, std::move(callback)));
+  hidden_account_identifiers_ = std::move(new_hidden_account_identifiers);
 }
 
 void BraveWalletHiddenAccountsPermissionsRevoker::
     ResolveWebsitePermissionsForHiddenAccount(
         mojom::CoinType coin,
         std::string hidden_account_identifier,
-        base::OnceCallback<void(bool)> callback,
         const std::vector<std::string>& websites) {
   const auto request_type = CoinTypeToPermissionRequestType(coin);
   if (!request_type) {
-    std::move(callback).Run(false);
     return;
   }
 
-  bool revoke_success = true;
   for (const std::string& website : websites) {
     const GURL website_url(website);
     if (!website_url.is_valid()) {
@@ -74,10 +87,8 @@ void BraveWalletHiddenAccountsPermissionsRevoker::
       continue;
     }
 
-    revoke_success &=
-        delegate_->ResetPermission(coin, requesting_origin, account_identifier);
+    delegate_->ResetPermission(coin, requesting_origin, account_identifier);
   }
-  std::move(callback).Run(revoke_success);
 }
 
 }  // namespace brave_wallet

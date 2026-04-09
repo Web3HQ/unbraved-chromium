@@ -3,46 +3,56 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-#ifndef BRAVE_COMPONENTS_BRAVE_WALLET_BROWSER_BRAVE_WALLET_HIDDEN_ACCOUNTS_PERMISSIONS_REVOKER_H_
-#define BRAVE_COMPONENTS_BRAVE_WALLET_BROWSER_BRAVE_WALLET_HIDDEN_ACCOUNTS_PERMISSIONS_REVOKER_H_
+#ifndef BRAVE_COMPONENTS_BRAVE_WALLET_BROWSER_HIDDEN_ACCOUNTS_PERMISSIONS_REVOKER_H_
+#define BRAVE_COMPONENTS_BRAVE_WALLET_BROWSER_HIDDEN_ACCOUNTS_PERMISSIONS_REVOKER_H_
 
 #include <string>
 #include <vector>
 
-#include "base/functional/callback.h"
+#include "base/containers/flat_set.h"
 #include "base/memory/raw_ref.h"
 #include "base/memory/weak_ptr.h"
+#include "brave/components/brave_wallet/browser/keyring_service_observer_base.h"
 #include "brave/components/brave_wallet/common/brave_wallet.mojom.h"
+#include "mojo/public/cpp/bindings/receiver.h"
 
 namespace brave_wallet {
 
 class BraveWalletServiceDelegate;
+class KeyringService;
 
-class BraveWalletHiddenAccountsPermissionsRevoker {
+class BraveWalletHiddenAccountsPermissionsRevoker
+    : public KeyringServiceObserverBase {
  public:
-  explicit BraveWalletHiddenAccountsPermissionsRevoker(
+  BraveWalletHiddenAccountsPermissionsRevoker(
+      KeyringService& keyring_service,
       BraveWalletServiceDelegate& delegate);
   BraveWalletHiddenAccountsPermissionsRevoker(
       const BraveWalletHiddenAccountsPermissionsRevoker&) = delete;
   BraveWalletHiddenAccountsPermissionsRevoker& operator=(
       const BraveWalletHiddenAccountsPermissionsRevoker&) = delete;
-  virtual ~BraveWalletHiddenAccountsPermissionsRevoker();
-  virtual void RevokeHiddenAccountPermisson(
-      const mojom::AccountIdPtr& account_id,
-      base::OnceCallback<void(bool)> callback);
+  ~BraveWalletHiddenAccountsPermissionsRevoker() override;
+
+  // KeyringServiceObserverBase:
+  void AccountsChanged() override;
 
  private:
+  void RevokePermissionsForHiddenAccounts(
+      std::vector<mojom::AccountInfoPtr> hidden_accounts);
   void ResolveWebsitePermissionsForHiddenAccount(
       mojom::CoinType coin,
       std::string hidden_account_identifier,
-      base::OnceCallback<void(bool)> callback,
       const std::vector<std::string>& websites);
 
+  raw_ref<KeyringService> keyring_service_;
   raw_ref<BraveWalletServiceDelegate> delegate_;
+  base::flat_set<std::string> hidden_account_identifiers_;
+  mojo::Receiver<brave_wallet::mojom::KeyringServiceObserver>
+      keyring_service_observer_receiver_{this};
   base::WeakPtrFactory<BraveWalletHiddenAccountsPermissionsRevoker>
       weak_ptr_factory_{this};
 };
 
 }  // namespace brave_wallet
 
-#endif  // BRAVE_COMPONENTS_BRAVE_WALLET_BROWSER_BRAVE_WALLET_HIDDEN_ACCOUNTS_PERMISSIONS_REVOKER_H_
+#endif  // BRAVE_COMPONENTS_BRAVE_WALLET_BROWSER_HIDDEN_ACCOUNTS_PERMISSIONS_REVOKER_H_

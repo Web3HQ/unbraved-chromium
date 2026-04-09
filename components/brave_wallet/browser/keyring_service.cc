@@ -37,7 +37,6 @@
 #include "brave/components/brave_wallet/browser/bitcoin/bitcoin_import_keyring.h"
 #include "brave/components/brave_wallet/browser/blockchain_registry.h"
 #include "brave/components/brave_wallet/browser/brave_wallet_constants.h"
-#include "brave/components/brave_wallet/browser/brave_wallet_hidden_accounts_permissions_revoker.h"
 #include "brave/components/brave_wallet/browser/brave_wallet_utils.h"
 #include "brave/components/brave_wallet/browser/cardano/cardano_cip30_serializer.h"
 #include "brave/components/brave_wallet/browser/cardano/cardano_hd_keyring.h"
@@ -2759,11 +2758,6 @@ std::vector<mojom::AccountInfoPtr> KeyringService::GetHiddenAccountsSync() {
   return hidden_accounts;
 }
 
-void KeyringService::InitializeHiddenAccountPermissionRevoker(
-    std::unique_ptr<BraveWalletHiddenAccountsPermissionsRevoker> revoker) {
-  hidden_account_permission_revoker_ = std::move(revoker);
-}
-
 void KeyringService::AddHiddenAccount(mojom::AccountIdPtr account_id,
                                       AddHiddenAccountCallback callback) {
   CHECK(account_id);
@@ -2780,23 +2774,6 @@ void KeyringService::AddHiddenAccount(mojom::AccountIdPtr account_id,
         return *account_info.GetAccountId() == *account_id;
       });
   if (!account_exists) {
-    std::move(callback).Run(false);
-    return;
-  }
-
-  CHECK(hidden_account_permission_revoker_);
-  hidden_account_permission_revoker_->RevokeHiddenAccountPermisson(
-      account_id.Clone(),
-      base::BindOnce(&KeyringService::OnHiddenAccountPermissionsRevoked,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(account_id),
-                     std::move(callback)));
-}
-
-void KeyringService::OnHiddenAccountPermissionsRevoked(
-    mojom::AccountIdPtr account_id,
-    AddHiddenAccountCallback callback,
-    bool revoke_success) {
-  if (!revoke_success) {
     std::move(callback).Run(false);
     return;
   }

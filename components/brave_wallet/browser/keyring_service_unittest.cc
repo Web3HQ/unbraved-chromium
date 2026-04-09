@@ -34,7 +34,6 @@
 #include "brave/components/brave_wallet/browser/bitcoin/bitcoin_test_utils.h"
 #include "brave/components/brave_wallet/browser/blockchain_registry.h"
 #include "brave/components/brave_wallet/browser/brave_wallet_constants.h"
-#include "brave/components/brave_wallet/browser/brave_wallet_hidden_accounts_permissions_revoker.h"
 #include "brave/components/brave_wallet/browser/brave_wallet_service.h"
 #include "brave/components/brave_wallet/browser/brave_wallet_utils.h"
 #include "brave/components/brave_wallet/browser/ethereum_keyring.h"
@@ -161,21 +160,6 @@ class TestKeyringServiceObserver : public mojom::KeyringServiceObserver {
  private:
   mojo::Receiver<mojom::KeyringServiceObserver> observer_receiver_{this};
   raw_ptr<base::test::TaskEnvironment> task_environment_;
-};
-
-class MockHiddenAccountsPermissionsRevoker
-    : public BraveWalletHiddenAccountsPermissionsRevoker {
- public:
-  explicit MockHiddenAccountsPermissionsRevoker(
-      BraveWalletServiceDelegate& delegate)
-      : BraveWalletHiddenAccountsPermissionsRevoker(delegate) {}
-  ~MockHiddenAccountsPermissionsRevoker() override = default;
-
-  MOCK_METHOD(void,
-              RevokeHiddenAccountPermisson,
-              (const mojom::AccountIdPtr& account_id,
-               base::OnceCallback<void(bool)> callback),
-              (override));
 };
 
 class KeyringServiceUnitTest : public testing::Test {
@@ -3115,18 +3099,6 @@ TEST_F(KeyringServiceUnitTest, SetAccountName_HardwareAccounts) {
 TEST_F(KeyringServiceUnitTest, HiddenAccounts) {
   KeyringService service(json_rpc_service(), GetPrefs(), GetLocalState());
   NiceMock<TestKeyringServiceObserver> observer(service, task_environment_);
-  auto permissions_delegate = TestBraveWalletServiceDelegate::Create();
-  auto revoker =
-      std::make_unique<NiceMock<MockHiddenAccountsPermissionsRevoker>>(
-          *permissions_delegate);
-  auto* revoker_ptr = revoker.get();
-  service.InitializeHiddenAccountPermissionRevoker(std::move(revoker));
-  EXPECT_CALL(*revoker_ptr, RevokeHiddenAccountPermisson(_, _))
-      .Times(2)
-      .WillRepeatedly([&](const mojom::AccountIdPtr&,
-                          base::OnceCallback<void(bool)> callback) {
-        std::move(callback).Run(true);
-      });
   ASSERT_TRUE(CreateWallet(&service, "brave"));
 
   auto account_id = GetAccountUtils(&service).EthAccountId(0);
@@ -3217,38 +3189,6 @@ TEST_F(KeyringServiceUnitTest, HiddenAccounts) {
     observer.WaitAndVerify();
     EXPECT_TRUE(GetHiddenAccounts(&service).empty());
   }
-}
-
-TEST_F(KeyringServiceUnitTest, HiddenAccountFailsWhenPermissionRevokeFails) {
-  KeyringService service(json_rpc_service(), GetPrefs(), GetLocalState());
-  NiceMock<TestKeyringServiceObserver> observer(service, task_environment_);
-
-  auto permissions_delegate = TestBraveWalletServiceDelegate::Create();
-  auto revoker =
-      std::make_unique<NiceMock<MockHiddenAccountsPermissionsRevoker>>(
-          *permissions_delegate);
-  auto* revoker_ptr = revoker.get();
-  service.InitializeHiddenAccountPermissionRevoker(std::move(revoker));
-
-  EXPECT_CALL(*revoker_ptr, RevokeHiddenAccountPermisson(_, _))
-      .Times(1)
-      .WillOnce([&](const mojom::AccountIdPtr&,
-                    base::OnceCallback<void(bool)> callback) {
-        std::move(callback).Run(false);
-      });
-
-  ASSERT_TRUE(CreateWallet(&service, "brave"));
-
-  auto account_id = GetAccountUtils(&service).EthAccountId(0);
-  EXPECT_CALL(observer, AccountsChanged()).Times(0);
-  EXPECT_FALSE(AddHiddenAccount(&service, account_id.Clone()));
-  observer.WaitAndVerify();
-
-  EXPECT_TRUE(GetHiddenAccounts(&service).empty());
-  EXPECT_TRUE(std::ranges::any_of(
-      service.GetAllAccountsSync()->accounts, [&](const auto& account_info) {
-        return account_info->account_id->unique_key == account_id->unique_key;
-      }));
 }
 
 TEST_F(KeyringServiceUnitTest, SetDefaultKeyringHardwareAccountName) {
