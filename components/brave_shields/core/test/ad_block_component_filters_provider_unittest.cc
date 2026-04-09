@@ -9,10 +9,12 @@
 
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
+#include "base/functional/bind.h"
 #include "base/test/run_until.h"
 #include "base/test/task_environment.h"
 #include "brave/components/brave_shields/core/browser/ad_block_filters_provider.h"
 #include "brave/components/brave_shields/core/browser/ad_block_filters_provider_manager.h"
+#include "brave/components/brave_shields/core/common/adblock/rs/src/lib.rs.h"
 #include "brave/components/brave_shields/core/common/pref_names.h"
 #include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/testing_pref_service.h"
@@ -48,6 +50,16 @@ class AdBlockComponentFiltersProviderTest : public testing::Test {
     provider.OnComponentReady(path);
   }
 
+  // Trigger a filter set load to compute the content hash.
+  static void LoadFilterSet(
+      brave_shields::AdBlockComponentFiltersProvider& provider) {
+    provider.LoadFilterSet(base::BindOnce(
+        [](base::OnceCallback<void(rust::Box<adblock::FilterSet>*)> cb) {
+          auto filter_set = adblock::new_filter_set();
+          std::move(cb).Run(&filter_set);
+        }));
+  }
+
  protected:
   base::test::TaskEnvironment task_environment_;
   base::ScopedTempDir temp_dir_;
@@ -73,6 +85,8 @@ TEST_F(AdBlockComponentFiltersProviderTest,
   provider_a.AddObserver(&observer_a);
   SimulateComponentReady(provider_a, temp_dir_.GetPath());
   ASSERT_TRUE(base::test::RunUntil([&]() { return observer_a.notified(); }));
+  LoadFilterSet(provider_a);
+  task_environment_.RunUntilIdle();
 
   HashObserver observer_b;
   brave_shields::AdBlockComponentFiltersProvider provider_b(
@@ -81,6 +95,8 @@ TEST_F(AdBlockComponentFiltersProviderTest,
   provider_b.AddObserver(&observer_b);
   SimulateComponentReady(provider_b, temp_dir2_.GetPath());
   ASSERT_TRUE(base::test::RunUntil([&]() { return observer_b.notified(); }));
+  LoadFilterSet(provider_b);
+  task_environment_.RunUntilIdle();
 
   // Each component should have its own content hash.
   ASSERT_TRUE(provider_a.GetContentHash().has_value());
@@ -98,6 +114,8 @@ TEST_F(AdBlockComponentFiltersProviderTest,
   observer_a.reset();
   SimulateComponentReady(provider_a, temp_dir_.GetPath());
   ASSERT_TRUE(base::test::RunUntil([&]() { return observer_a.notified(); }));
+  LoadFilterSet(provider_a);
+  task_environment_.RunUntilIdle();
 
   EXPECT_NE(provider_a.GetContentHash().value(), hash_a);
   EXPECT_EQ(provider_b.GetContentHash().value(), original_hash_b);

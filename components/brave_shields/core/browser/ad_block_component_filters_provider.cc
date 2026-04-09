@@ -115,19 +115,14 @@ void AdBlockComponentFiltersProvider::UnregisterComponent() {
   }
 }
 
-void AdBlockComponentFiltersProvider::OnContentHashComputed(
-    base::FilePath path,
-    std::string content_hash) {
+void AdBlockComponentFiltersProvider::OnComponentReady(
+    const base::FilePath& path) {
+  TRACE_EVENT(
+      "brave.adblock", "AdBlockComponentFiltersProvider::OnComponentReady",
+      perfetto::TerminatingFlow::FromPointer(this), "path", path.value());
+
   base::FilePath old_path = component_path_;
   component_path_ = path;
-
-  if (local_state_) {
-    ScopedDictPrefUpdate update(local_state_,
-                                prefs::kAdBlockComponentFiltersCacheHash);
-    update->Set(component_id_, content_hash);
-  } else {
-    CHECK_IS_TEST();
-  }
   NotifyObservers(engine_is_default_);
 
   if (!old_path.empty()) {
@@ -135,30 +130,6 @@ void AdBlockComponentFiltersProvider::OnContentHashComputed(
         FROM_HERE, {base::TaskPriority::BEST_EFFORT, base::MayBlock()},
         base::BindOnce(IgnoreResult(&base::DeletePathRecursively), old_path));
   }
-}
-
-void AdBlockComponentFiltersProvider::OnComponentReady(
-    const base::FilePath& path) {
-  TRACE_EVENT(
-      "brave.adblock", "AdBlockComponentFiltersProvider::OnComponentReady",
-      perfetto::TerminatingFlow::FromPointer(this), "path", path.value());
-
-  base::ThreadPool::PostTaskAndReplyWithResult(
-      FROM_HERE, {base::TaskPriority::USER_BLOCKING, base::MayBlock()},
-      base::BindOnce(
-          [](const base::FilePath& path) {
-            auto list_path = path.AppendASCII(kListFile);
-            std::optional<std::vector<uint8_t>> content =
-                base::ReadFileToBytes(list_path);
-            if (!content) {
-              return std::string();
-            }
-            return base::NumberToString(
-                base::FastHash(std::string(content->begin(), content->end())));
-          },
-          path),
-      base::BindOnce(&AdBlockComponentFiltersProvider::OnContentHashComputed,
-                     weak_factory_.GetWeakPtr(), path));
 }
 
 bool AdBlockComponentFiltersProvider::IsInitialized() const {
@@ -198,9 +169,9 @@ void AdBlockComponentFiltersProvider::LoadFilterSet(
         void(base::OnceCallback<void(rust::Box<adblock::FilterSet>*)>)> cb) {
   base::FilePath list_file_path = GetFilterSetPath();
 
-  const auto flow = perfetto::Flow::ProcessScoped(base::RandUint64());
+  const uint64_t flow_id = base::RandUint64();
   TRACE_EVENT("brave.adblock", "AdBlockComponentFiltersProvider::LoadFilterSet",
-              flow);
+              perfetto::Flow::ProcessScoped(flow_id));
 
   if (list_file_path.empty()) {
     // If the path is not ready yet, provide a no-op callback immediately. An
@@ -212,8 +183,24 @@ void AdBlockComponentFiltersProvider::LoadFilterSet(
   base::ThreadPool::PostTaskAndReplyWithResult(
       FROM_HERE, {base::MayBlock()},
       base::BindOnce(&brave_component_updater::ReadDATFileData, list_file_path),
-      base::BindOnce(&OnReadDATFileData, std::move(cb), permission_mask_,
-                     flow));
+      base::BindOnce(&AdBlockComponentFiltersProvider::OnDATFileDataReady,
+                     weak_factory_.GetWeakPtr(), std::move(cb), flow_id));
+}
+
+void AdBlockComponentFiltersProvider::OnDATFileDataReady(
+    base::OnceCallback<
+        void(base::OnceCallback<void(rust::Box<adblock::FilterSet>*)>)> cb,
+    uint64_t flow_id,
+    DATFileDataBuffer buffer) {
+  // Compute and persist the content hash while we have the data in hand.
+  if (local_state_) {
+    ScopedDictPrefUpdate update(local_state_,
+                                prefs::kAdBlockComponentFiltersCacheHash);
+    update->Set(component_id_, base::NumberToString(base::FastHash(
+                                   std::string(buffer.begin(), buffer.end()))));
+  }
+  OnReadDATFileData(std::move(cb), permission_mask_,
+                    perfetto::Flow::ProcessScoped(flow_id), std::move(buffer));
 }
 
 }  // namespace brave_shields
