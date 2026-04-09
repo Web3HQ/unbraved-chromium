@@ -112,18 +112,18 @@ class AdBlockService {
     void OnResourcesLoaded(AdblockResourceStorageBox storage) override;
 
     OnResourcesLoadedCallback on_resources_loaded_;
-    raw_ptr<AdBlockResourceProvider> resource_provider_ = nullptr;  // not owned
-    raw_ptr<AdBlockResourceProvider> custom_resource_provider_ =
-        nullptr;  // not owned
-    raw_ptr<AdBlockFiltersProviderManager> filters_provider_manager_ =
-        nullptr;  // not owned
     ShouldLoadFilterSetCallback should_load_filter_set_;
     const bool engine_is_default_;
 
     std::unique_ptr<rust::Box<adblock::FilterSet>> filter_set_;
     DATFileDataBuffer dat_;
-
     scoped_refptr<base::SequencedTaskRunner> task_runner_;
+
+    raw_ptr<AdBlockResourceProvider> resource_provider_ = nullptr;  // not owned
+    raw_ptr<AdBlockResourceProvider> custom_resource_provider_ =
+        nullptr;  // not owned
+    raw_ptr<AdBlockFiltersProviderManager> filters_provider_manager_ =
+        nullptr;  // not owned
 
     base::WeakPtrFactory<SourceProviderObserver> weak_factory_{this};
   };
