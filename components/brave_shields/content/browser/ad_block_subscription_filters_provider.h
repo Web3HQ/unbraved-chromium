@@ -63,7 +63,6 @@ class AdBlockSubscriptionFiltersProvider : public AdBlockFiltersProvider {
   std::string GetCacheKey() const;
 
   base::FilePath list_file_;
-  std::string content_hash_;
   const raw_ptr<PrefService> local_state_;
 
   base::RepeatingCallback<void(const adblock::FilterListMetadata&)>

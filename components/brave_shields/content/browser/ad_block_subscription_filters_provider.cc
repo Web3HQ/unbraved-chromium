@@ -82,9 +82,6 @@ std::string AdBlockSubscriptionFiltersProvider::GetCacheKey() const {
 
 std::optional<std::string> AdBlockSubscriptionFiltersProvider::GetContentHash()
     const {
-  if (!content_hash_.empty()) {
-    return content_hash_;
-  }
   if (!local_state_) {
     CHECK_IS_TEST();
     return std::nullopt;
@@ -105,13 +102,13 @@ void AdBlockSubscriptionFiltersProvider::OnDATFileDataReady(
     const DATFileDataBuffer& dat_buf) {
   TRACE_EVENT("brave.adblock",
               "AdBlockSubscriptionFiltersProvider::OnDATFileDataReady", flow);
-  // Compute the content hash while we have the data in hand.
-  content_hash_ = base::NumberToString(
-      base::PersistentHash(std::string(dat_buf.begin(), dat_buf.end())));
+  // Compute and persist the content hash while we have the data in hand.
   if (local_state_) {
     ScopedDictPrefUpdate update(local_state_,
                                 prefs::kAdBlockSubscriptionFiltersCacheHash);
-    update->Set(GetCacheKey(), content_hash_);
+    update->Set(GetCacheKey(),
+                base::NumberToString(base::PersistentHash(
+                    std::string(dat_buf.begin(), dat_buf.end()))));
   } else {
     CHECK_IS_TEST();
   }
@@ -132,11 +129,15 @@ void AdBlockSubscriptionFiltersProvider::OnDATFileDataReady(
 }
 
 void AdBlockSubscriptionFiltersProvider::OnListAvailable() {
-  // Clear the in-memory hash so ComputeCombinedHash produces a different
+  // Clear the persisted hash so ComputeCombinedHash produces a different
   // result, forcing ShouldLoadFilterState to return true and trigger a
   // reload. The new hash will be computed in OnDATFileDataReady when the
   // file content is read during filter set loading.
-  content_hash_.clear();
+  if (local_state_) {
+    ScopedDictPrefUpdate update(local_state_,
+                                prefs::kAdBlockSubscriptionFiltersCacheHash);
+    update->Remove(GetCacheKey());
+  }
   NotifyObservers(engine_is_default_);
 }
 
