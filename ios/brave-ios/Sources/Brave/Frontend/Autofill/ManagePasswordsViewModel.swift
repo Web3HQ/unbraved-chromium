@@ -100,6 +100,15 @@ class ManagePasswordsViewModel {
     }
     deletePasswords(toDelete)
   }
+
+  func updatePassword(_ password: CWVPassword, with draft: ManagePasswordDraft) {
+    autofillDataManager.update(
+      password,
+      newUsername: draft.username,
+      newPassword: draft.password,
+      timestamp: Date()
+    )
+  }
 }
 
 extension ManagePasswordsViewModel {

@@ -39,6 +39,12 @@ struct ManagePasswordDetailView: View {
         .onAppear {
           passwordDraft.prepare(with: password)
         }
+        .onDisappear {
+          if passwordDraft !== password {
+            viewModel.updatePassword(password, with: passwordDraft)
+          }
+          passwordDraft.reset()
+        }
 
       } else {
         ManagePasswordDetailReadOnlyView(
@@ -62,6 +68,8 @@ struct ManagePasswordDetailView: View {
       if isEditMode {
         ToolbarItem(placement: .topBarLeading) {
           Button {
+            // Dismiss edit mode without applying any changes
+            passwordDraft.prepare(with: password)
             editMode?.wrappedValue = .inactive
           } label: {
             Label(Strings.done, braveSystemImage: "leo.close")
@@ -179,9 +187,9 @@ struct ManagePasswordDetailReadOnlyView: View {
 struct ManagePasswordDetailAddEditView: View {
   @FocusState private var isFocused: Bool
   @Binding var isPasswordRevealed: Bool
-  @Binding private(set) var site: String
-  @Binding private(set) var username: String
-  @Binding private(set) var passwordValue: String
+  @Binding var site: String
+  @Binding var username: String
+  @Binding var passwordValue: String
 
   var body: some View {
     Form {
