@@ -177,13 +177,15 @@ std::optional<std::string> AdBlockComponentFiltersProvider::GetContentHash()
     return content_hash_;
   }
   // On startup, before OnComponentReady fires, read persisted hash from prefs.
-  if (local_state_) {
-    const auto& dict =
-        local_state_->GetDict(prefs::kAdBlockComponentFiltersCacheHash);
-    const std::string* stored = dict.FindString(GetCacheKey());
-    if (stored) {
-      return *stored;
-    }
+  if (!local_state_) {
+    CHECK_IS_TEST();
+    return std::nullopt;
+  }
+  const auto& dict =
+      local_state_->GetDict(prefs::kAdBlockComponentFiltersCacheHash);
+  const std::string* stored = dict.FindString(GetCacheKey());
+  if (stored) {
+    return *stored;
   }
   return std::nullopt;
 }

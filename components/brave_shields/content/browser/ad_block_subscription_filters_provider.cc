@@ -85,13 +85,15 @@ std::optional<std::string> AdBlockSubscriptionFiltersProvider::GetContentHash()
   if (!content_hash_.empty()) {
     return content_hash_;
   }
-  if (local_state_) {
-    const auto& dict =
-        local_state_->GetDict(prefs::kAdBlockSubscriptionFiltersCacheHash);
-    const std::string* stored = dict.FindString(GetCacheKey());
-    if (stored) {
-      return *stored;
-    }
+  if (!local_state_) {
+    CHECK_IS_TEST();
+    return std::nullopt;
+  }
+  const auto& dict =
+      local_state_->GetDict(prefs::kAdBlockSubscriptionFiltersCacheHash);
+  const std::string* stored = dict.FindString(GetCacheKey());
+  if (stored) {
+    return *stored;
   }
   return std::nullopt;
 }
