@@ -9,16 +9,13 @@
 #include <memory>
 #include <optional>
 
+#include "base/functional/callback.h"
 #include "base/gtest_prod_util.h"
-#include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
-#include "base/observer_list.h"
-#include "base/task/sequenced_task_runner.h"
 #include "base/values.h"
 #include "brave/components/brave_wallet/browser/tx_storage_delegate.h"
 #include "components/value_store/value_store_factory.h"
-
-class PrefService;
+#include "components/value_store/value_store_frontend.h"
 
 namespace value_store {
 class ValueStoreFrontend;
@@ -26,27 +23,20 @@ class ValueStoreFrontend;
 
 namespace brave_wallet {
 
+// Default `TxStorageDelegate` implementation. Supports reading and saving
+// transaction dict into leveldb database.
 class TxStorageDelegateImpl final : public TxStorageDelegate {
  public:
-  TxStorageDelegateImpl(
-      PrefService* prefs,
-      scoped_refptr<value_store::ValueStoreFactory> store_factory,
-      scoped_refptr<base::SequencedTaskRunner> ui_task_runner);
+  explicit TxStorageDelegateImpl(const base::FilePath& wallet_base_directory);
   ~TxStorageDelegateImpl() override;
   TxStorageDelegateImpl(const TxStorageDelegateImpl&) = delete;
   TxStorageDelegateImpl& operator=(const TxStorageDelegateImpl&) = delete;
 
   bool IsInitialized() const override;
-  const base::DictValue& GetTxs() const override;
-  base::DictValue& GetTxs() override;
   void ScheduleWrite() override;
+  void Clear() override;
+  void SetOnInitializedCallbackForTesting(base::OnceClosure callback) override;
   void DisableWritesForTesting(bool disable);
-
-  // Only owner ex.TxService can clear data.
-  void Clear();
-
-  void AddObserver(TxStorageDelegate::Observer* observer) override;
-  void RemoveObserver(TxStorageDelegate::Observer* observer) override;
 
  private:
   friend class TxStateManagerUnitTest;
@@ -56,31 +46,36 @@ class TxStorageDelegateImpl final : public TxStorageDelegate {
                            BraveWalletTransactionsDBFormatMigrated);
   FRIEND_TEST_ALL_PREFIXES(EthTxManagerUnitTest, Reset);
 
-  static std::unique_ptr<value_store::ValueStoreFrontend>
-  MakeValueStoreFrontend(
-      scoped_refptr<value_store::ValueStoreFactory> store_factory,
-      scoped_refptr<base::SequencedTaskRunner> ui_task_runner);
-
   // Read all txs from db
   void Initialize();
   void OnTxsInitialRead(std::optional<base::Value> txs);
   void RunDBMigrations();
 
-  base::ObserverList<TxStorageDelegate::Observer> observers_;
-
   // Used to indicate if transactions is loaded to memory caches txs_
   bool initialized_ = false;
-  // In memory txs which will be read during initialization from db and schedule
-  // write to it when changed. We only hold 500 confirmed and 500 rejected
-  // txs, once the limit is reached we will retire oldest entries.
-  base::DictValue txs_;
 
   bool disable_writes_for_testing_ = false;
+  base::OnceClosure on_initialized_callback_for_testing_;
 
   std::unique_ptr<value_store::ValueStoreFrontend> store_;
 
-  raw_ptr<PrefService> prefs_;
   base::WeakPtrFactory<TxStorageDelegateImpl> weak_factory_{this};
+};
+
+// `TxStorageDelegate` implementation which doesn't persist anything on disk.
+class TxStorageDelegateIncognitoImpl final : public TxStorageDelegate {
+ public:
+  TxStorageDelegateIncognitoImpl() = default;
+  ~TxStorageDelegateIncognitoImpl() override = default;
+  TxStorageDelegateIncognitoImpl(const TxStorageDelegateIncognitoImpl&) =
+      delete;
+  TxStorageDelegateIncognitoImpl& operator=(
+      const TxStorageDelegateIncognitoImpl&) = delete;
+
+  bool IsInitialized() const override;
+  void ScheduleWrite() override {}
+  void Clear() override {}
+  void SetOnInitializedCallbackForTesting(base::OnceClosure callback) override;
 };
 
 }  // namespace brave_wallet

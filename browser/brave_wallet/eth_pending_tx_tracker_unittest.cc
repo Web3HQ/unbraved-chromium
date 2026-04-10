@@ -49,8 +49,8 @@ class EthPendingTxTrackerUnitTest : public testing::Test {
     RegisterUserProfilePrefs(prefs->registry());
     builder.SetPrefService(std::move(prefs));
     profile_ = builder.Build();
-    factory_ = GetTestValueStoreFactory(temp_dir_);
-    delegate_ = GetTxStorageDelegateForTest(GetPrefs(), factory_);
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    delegate_ = CreateTxStorageDelegateForTest(temp_dir_.GetPath());
     account_resolver_delegate_ =
         std::make_unique<AccountResolverDelegateForTest>();
     tx_state_manager_ = std::make_unique<EthTxStateManager>(
@@ -88,7 +88,6 @@ class EthPendingTxTrackerUnitTest : public testing::Test {
   std::unique_ptr<NetworkManager> network_manager_;
   std::unique_ptr<JsonRpcService> json_rpc_service_;
   base::ScopedTempDir temp_dir_;
-  scoped_refptr<value_store::TestValueStoreFactory> factory_;
   std::unique_ptr<value_store::ValueStoreFrontend> storage_;
   std::unique_ptr<TxStorageDelegateImpl> delegate_;
   std::unique_ptr<AccountResolverDelegateForTest> account_resolver_delegate_;

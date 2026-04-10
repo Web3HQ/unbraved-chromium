@@ -12,6 +12,7 @@
 
 #include "base/check.h"
 #include "base/check_op.h"
+#include "base/files/file_path.h"
 #include "base/notreached.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
@@ -27,6 +28,8 @@
 #include "brave/components/brave_wallet/browser/network_manager.h"
 #include "brave/components/brave_wallet/browser/pref_names.h"
 #include "brave/components/brave_wallet/browser/tx_service.h"
+#include "brave/components/brave_wallet/browser/tx_storage_delegate.h"
+#include "brave/components/brave_wallet/browser/tx_storage_delegate_impl.h"
 #include "brave/components/brave_wallet/browser/wallet_data_files_installer.h"
 #include "brave/components/brave_wallet/common/brave_wallet.mojom.h"
 #include "brave/components/brave_wallet/common/brave_wallet_response_helpers.h"
@@ -144,6 +147,16 @@ mojom::NetworkInfoPtr GetFixedSelectedNetworkForAccount(
   NOTREACHED();
 }
 
+std::unique_ptr<TxStorageDelegate> CreateTxStorageDelegate(
+    BraveWalletServiceDelegate& wallet_delegate) {
+  if (wallet_delegate.IsPrivateWindow()) {
+    return std::make_unique<TxStorageDelegateIncognitoImpl>();
+  }
+
+  return std::make_unique<TxStorageDelegateImpl>(
+      wallet_delegate.GetWalletBaseDirectory());
+}
+
 }  // namespace
 
 struct PendingDecryptRequest {
@@ -203,6 +216,11 @@ BraveWalletService::BraveWalletService(
       weak_ptr_factory_(this) {
   CHECK(delegate_);
 
+  // auto wallet_base_directory_incognito_aware =
+  //     delegate_->IsPrivateWindow()
+  //         ? std::nullopt
+  //         : std::make_optional();
+
   if (IsBitcoinEnabled()) {
     bitcoin_wallet_service_ = std::make_unique<BitcoinWalletService>(
         *keyring_service(), *network_manager(), url_loader_factory);
@@ -235,8 +253,7 @@ BraveWalletService::BraveWalletService(
   tx_service_ = std::make_unique<TxService>(
       json_rpc_service(), GetBitcoinWalletService(), GetZcashWalletService(),
       GetCardanoWalletService(), GetPolkadotWalletService(), *keyring_service(),
-      profile_prefs, delegate_->GetWalletBaseDirectory(),
-      base::SequencedTaskRunner::GetCurrentDefault());
+      profile_prefs, CreateTxStorageDelegate(*delegate_));
 
   brave_wallet_p3a_ = std::make_unique<BraveWalletP3A>(
       this, keyring_service(), tx_service(), profile_prefs, local_state),

@@ -11,10 +11,10 @@
 #include "base/check.h"
 #include "base/files/file_path.h"
 #include "base/functional/bind.h"
-#include "brave/components/brave_wallet/browser/brave_wallet_utils.h"
-#include "brave/components/brave_wallet/browser/pref_names.h"
-#include "brave/components/brave_wallet/common/brave_wallet_constants.h"
+#include "base/task/sequenced_task_runner.h"
+#include "brave/components/brave_wallet/common/brave_wallet.mojom.h"
 #include "components/prefs/pref_service.h"
+#include "components/value_store/value_store_factory_impl.h"
 #include "components/value_store/value_store_frontend.h"
 #include "components/value_store/value_store_task_runner.h"
 
@@ -32,15 +32,21 @@ constexpr base::FilePath::CharType kWalletStorageName[] =
 // key used in transaction storage
 constexpr char kStorageTransactionsKey[] = "transactions";
 
+std::unique_ptr<value_store::ValueStoreFrontend> CreateValueStoreFrontend(
+    const base::FilePath& wallet_base_directory) {
+  return std::make_unique<value_store::ValueStoreFrontend>(
+      base::MakeRefCounted<value_store::ValueStoreFactoryImpl>(
+          wallet_base_directory),
+      base::FilePath(kWalletStorageName), kValueStoreDatabaseUMAClientName,
+      base::SequencedTaskRunner::GetCurrentDefault(),
+      value_store::GetValueStoreTaskRunner());
+}
+
 }  // namespace
 
 TxStorageDelegateImpl::TxStorageDelegateImpl(
-    PrefService* prefs,
-    scoped_refptr<value_store::ValueStoreFactory> store_factory,
-    scoped_refptr<base::SequencedTaskRunner> ui_task_runner)
-    : prefs_(prefs) {
-  store_ = MakeValueStoreFrontend(store_factory, ui_task_runner);
-
+    const base::FilePath& wallet_base_directory)
+    : store_(CreateValueStoreFrontend(wallet_base_directory)) {
   Initialize();
 }
 
@@ -48,24 +54,6 @@ TxStorageDelegateImpl::~TxStorageDelegateImpl() = default;
 
 bool TxStorageDelegateImpl::IsInitialized() const {
   return initialized_;
-}
-
-const base::DictValue& TxStorageDelegateImpl::GetTxs() const {
-  return txs_;
-}
-
-base::DictValue& TxStorageDelegateImpl::GetTxs() {
-  return txs_;
-}
-
-std::unique_ptr<value_store::ValueStoreFrontend>
-TxStorageDelegateImpl::MakeValueStoreFrontend(
-    scoped_refptr<value_store::ValueStoreFactory> store_factory,
-    scoped_refptr<base::SequencedTaskRunner> ui_task_runner) {
-  return std::make_unique<value_store::ValueStoreFrontend>(
-      std::move(store_factory), base::FilePath(kWalletStorageName),
-      kValueStoreDatabaseUMAClientName, std::move(ui_task_runner),
-      value_store::GetValueStoreTaskRunner());
 }
 
 void TxStorageDelegateImpl::Initialize() {
@@ -80,8 +68,8 @@ void TxStorageDelegateImpl::OnTxsInitialRead(std::optional<base::Value> txs) {
   }
   initialized_ = true;
   RunDBMigrations();
-  for (auto& observer : observers_) {
-    observer.OnStorageInitialized();
+  if (on_initialized_callback_for_testing_) {
+    std::move(on_initialized_callback_for_testing_).Run();
   }
 }
 
@@ -108,19 +96,24 @@ void TxStorageDelegateImpl::DisableWritesForTesting(bool disable) {
   disable_writes_for_testing_ = disable;
 }
 
+void TxStorageDelegateImpl::SetOnInitializedCallbackForTesting(  // IN-TEST
+    base::OnceClosure callback) {
+  on_initialized_callback_for_testing_ = std::move(callback);
+}
+
 void TxStorageDelegateImpl::Clear() {
   txs_.clear();
   store_->Remove(kStorageTransactionsKey);
 }
 
-void TxStorageDelegateImpl::AddObserver(
-    TxStorageDelegateImpl::Observer* observer) {
-  observers_.AddObserver(observer);
+bool TxStorageDelegateIncognitoImpl::IsInitialized() const {
+  return true;
 }
 
-void TxStorageDelegateImpl::RemoveObserver(
-    TxStorageDelegateImpl::Observer* observer) {
-  observers_.RemoveObserver(observer);
+void TxStorageDelegateIncognitoImpl::
+    SetOnInitializedCallbackForTesting(  // IN-TEST
+        base::OnceClosure callback) {
+  std::move(callback).Run();
 }
 
 }  // namespace brave_wallet

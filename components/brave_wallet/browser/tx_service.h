@@ -13,7 +13,6 @@
 
 #include "base/containers/flat_map.h"
 #include "base/memory/raw_ptr.h"
-#include "base/memory/scoped_refptr.h"
 #include "brave/components/brave_wallet/common/brave_wallet.mojom.h"
 #include "brave/components/brave_wallet/common/buildflags/buildflags.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
@@ -23,15 +22,6 @@
 
 static_assert(BUILDFLAG(ENABLE_BRAVE_WALLET));
 class PrefService;
-
-namespace base {
-class FilePath;
-class SequencedTaskRunner;
-}  // namespace base
-
-namespace value_store {
-class ValueStoreFactory;
-}  // namespace value_store
 
 namespace brave_wallet {
 
@@ -44,7 +34,6 @@ class PolkadotWalletService;
 class KeyringService;
 class TxManager;
 class TxStorageDelegate;
-class TxStorageDelegateImpl;
 class EthTxManager;
 class SolanaTxManager;
 class BitcoinTxManager;
@@ -66,8 +55,7 @@ class TxService : public mojom::TxService,
             PolkadotWalletService* polkadot_wallet_service,
             KeyringService& keyring_service,
             PrefService* prefs,
-            const base::FilePath& wallet_base_directory,
-            scoped_refptr<base::SequencedTaskRunner> ui_task_runner);
+            std::unique_ptr<TxStorageDelegate> tx_storage_delegate);
   ~TxService() override;
   TxService(const TxService&) = delete;
   TxService operator=(const TxService&) = delete;
@@ -310,8 +298,7 @@ class TxService : public mojom::TxService,
   raw_ptr<PrefService> prefs_;  // NOT OWNED
   raw_ptr<JsonRpcService> json_rpc_service_ = nullptr;
 
-  scoped_refptr<value_store::ValueStoreFactory> store_factory_;
-  std::unique_ptr<TxStorageDelegateImpl> delegate_;
+  std::unique_ptr<TxStorageDelegate> delegate_;
   std::unique_ptr<AccountResolverDelegate> account_resolver_delegate_;
   base::flat_map<mojom::CoinType, std::unique_ptr<TxManager>> tx_manager_map_;
 
@@ -322,7 +309,7 @@ class TxService : public mojom::TxService,
   mojo::ReceiverSet<mojom::FilTxManagerProxy> fil_tx_manager_receivers_;
   mojo::ReceiverSet<mojom::BtcTxManagerProxy> btc_tx_manager_receivers_;
 
-  base::WeakPtrFactory<TxService> weak_factory_;
+  base::WeakPtrFactory<TxService> weak_factory_{this};
 };
 
 }  // namespace brave_wallet

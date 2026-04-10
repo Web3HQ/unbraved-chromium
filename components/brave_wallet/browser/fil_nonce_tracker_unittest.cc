@@ -97,10 +97,9 @@ class FilNonceTrackerUnitTest : public testing::Test {
 
 TEST_F(FilNonceTrackerUnitTest, GetNonce) {
   base::ScopedTempDir temp_dir;
-  scoped_refptr<value_store::TestValueStoreFactory> factory =
-      GetTestValueStoreFactory(temp_dir);
+  CHECK(temp_dir.CreateUniqueTempDir());
   std::unique_ptr<TxStorageDelegateImpl> delegate =
-      GetTxStorageDelegateForTest(GetPrefs(), factory);
+      CreateTxStorageDelegateForTest(temp_dir.GetPath());
   auto account_resolver_delegate =
       std::make_unique<AccountResolverDelegateForTest>();
   FilTxStateManager tx_state_manager(*delegate, *account_resolver_delegate);

@@ -14,12 +14,9 @@
 #include <vector>
 
 #include "base/files/scoped_temp_dir.h"
-#include "base/functional/callback_helpers.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
-#include "base/task/sequenced_task_runner.h"
 #include "base/test/bind.h"
-#include "base/test/run_until.h"
 #include "base/test/task_environment.h"
 #include "base/test/values_test_util.h"
 #include "brave/components/brave_wallet/browser/blockchain_registry.h"
@@ -250,9 +247,8 @@ class EthTxManagerUnitTest : public testing::Test {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     tx_service_ = std::make_unique<TxService>(
         json_rpc_service_.get(), nullptr, nullptr, nullptr, nullptr,
-        *keyring_service_, GetPrefs(), temp_dir_.GetPath(),
-        base::SequencedTaskRunner::GetCurrentDefault());
-    WaitForTxStorageDelegateInitialized(tx_service_->GetDelegateForTesting());
+        *keyring_service_, GetPrefs(),
+        CreateTxStorageDelegateForTest(temp_dir_.GetPath()));
 
     GetAccountUtils().CreateWallet(kMnemonicAbandonAbandon,
                                    kTestWalletPassword);

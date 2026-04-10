@@ -24,7 +24,7 @@
 #include "brave/components/brave_wallet/browser/pref_names.h"
 #include "brave/components/brave_wallet/browser/test_utils.h"
 #include "brave/components/brave_wallet/browser/tx_service.h"
-#include "brave/components/brave_wallet/browser/tx_storage_delegate.h"
+#include "brave/components/brave_wallet/browser/tx_storage_delegate_impl.h"
 #include "brave/components/brave_wallet/common/brave_wallet.mojom.h"
 #include "brave/components/brave_wallet/common/features.h"
 #include "components/grit/brave_components_strings.h"
@@ -69,9 +69,7 @@ class PolkadotTxManagerUnitTest : public testing::Test {
     tx_service_ = std::make_unique<TxService>(
         json_rpc_service_.get(), nullptr, nullptr, nullptr,
         polkadot_wallet_service_.get(), *keyring_service_, &profile_prefs_,
-        temp_dir_.GetPath(), base::SequencedTaskRunner::GetCurrentDefault());
-
-    WaitForTxStorageDelegateInitialized(tx_service_->GetDelegateForTesting());
+        CreateTxStorageDelegateForTest(temp_dir_.GetPath()));
 
     account_resolver_delegate_ =
         std::make_unique<AccountResolverDelegateImpl>(*keyring_service_);

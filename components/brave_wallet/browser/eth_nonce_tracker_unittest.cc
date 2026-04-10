@@ -104,10 +104,8 @@ class EthNonceTrackerUnitTest : public testing::Test {
 
 TEST_F(EthNonceTrackerUnitTest, GetNonce) {
   base::ScopedTempDir temp_dir;
-  scoped_refptr<value_store::TestValueStoreFactory> factory =
-      GetTestValueStoreFactory(temp_dir);
-  std::unique_ptr<TxStorageDelegateImpl> delegate =
-      GetTxStorageDelegateForTest(GetPrefs(), factory);
+  CHECK(temp_dir.CreateUniqueTempDir());
+  auto delegate = CreateTxStorageDelegateForTest(temp_dir.GetPath());
   auto account_resolver_delegate =
       std::make_unique<AccountResolverDelegateForTest>();
   EthTxStateManager tx_state_manager(*delegate, *account_resolver_delegate);

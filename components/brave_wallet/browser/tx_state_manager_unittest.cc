@@ -65,8 +65,8 @@ class TxStateManagerUnitTest : public testing::Test {
     // The only different between each coin type's tx state manager in these
     // base functions are their pref paths, so here we just use
     // EthTxStateManager to test common methods in TxStateManager.
-    factory_ = GetTestValueStoreFactory(temp_dir_);
-    delegate_ = GetTxStorageDelegateForTest(&prefs_, factory_);
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    delegate_ = CreateTxStorageDelegateForTest(temp_dir_.GetPath());
     account_resolver_delegate_ =
         std::make_unique<AccountResolverDelegateForTest>();
     tx_state_manager_ = std::make_unique<EthTxStateManager>(
@@ -104,7 +104,6 @@ class TxStateManagerUnitTest : public testing::Test {
   base::test::TaskEnvironment task_environment_;
   sync_preferences::TestingPrefServiceSyncable prefs_;
   base::ScopedTempDir temp_dir_;
-  scoped_refptr<value_store::TestValueStoreFactory> factory_;
   std::unique_ptr<TxStorageDelegateImpl> delegate_;
   std::unique_ptr<AccountResolverDelegateForTest> account_resolver_delegate_;
   mojom::AccountIdPtr eth_account_id_;

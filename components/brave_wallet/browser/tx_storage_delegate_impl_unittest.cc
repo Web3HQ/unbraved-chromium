@@ -16,7 +16,6 @@
 #include "base/values.h"
 #include "brave/components/brave_wallet/browser/pref_names.h"
 #include "brave/components/brave_wallet/browser/test_utils.h"
-#include "components/prefs/pref_service.h"
 #include "components/sync_preferences/testing_pref_service_syncable.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -33,7 +32,7 @@ class TxStorageDelegateImplUnitTest : public testing::Test {
   void SetUp() override {
     RegisterProfilePrefs(prefs_.registry());
     RegisterProfilePrefsForMigration(prefs_.registry());
-    factory_ = GetTestValueStoreFactory(temp_dir_);
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
   }
 
   std::optional<base::Value> GetTxsFromDB(TxStorageDelegateImpl* delegate) {
@@ -52,11 +51,10 @@ class TxStorageDelegateImplUnitTest : public testing::Test {
   base::test::TaskEnvironment task_environment_;
   sync_preferences::TestingPrefServiceSyncable prefs_;
   base::ScopedTempDir temp_dir_;
-  scoped_refptr<value_store::TestValueStoreFactory> factory_;
 };
 
 TEST_F(TxStorageDelegateImplUnitTest, ReadWriteAndClear) {
-  auto delegate = GetTxStorageDelegateForTest(&prefs_, factory_);
+  auto delegate = CreateTxStorageDelegateForTest(temp_dir_.GetPath());
   // OnTxRead with empty txs
   auto& txs = delegate->GetTxs();
   EXPECT_TRUE(txs.empty());

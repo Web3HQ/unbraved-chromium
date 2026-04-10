@@ -23,12 +23,11 @@
 #include "brave/components/brave_wallet/browser/pref_names.h"
 #include "brave/components/brave_wallet/browser/solana_tx_manager.h"
 #include "brave/components/brave_wallet/browser/tx_manager.h"
-#include "brave/components/brave_wallet/browser/tx_storage_delegate_impl.h"
+#include "brave/components/brave_wallet/browser/tx_storage_delegate.h"
 #include "brave/components/brave_wallet/browser/zcash/zcash_tx_manager.h"
 #include "brave/components/brave_wallet/common/common_utils.h"
 #include "brave/components/brave_wallet/common/fil_address.h"
 #include "components/grit/brave_components_strings.h"
-#include "components/value_store/value_store_factory_impl.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "url/origin.h"
 
@@ -56,13 +55,10 @@ TxService::TxService(JsonRpcService* json_rpc_service,
                      PolkadotWalletService* polkadot_wallet_service,
                      KeyringService& keyring_service,
                      PrefService* prefs,
-                     const base::FilePath& wallet_base_directory,
-                     scoped_refptr<base::SequencedTaskRunner> ui_task_runner)
-    : prefs_(prefs), json_rpc_service_(json_rpc_service), weak_factory_(this) {
-  store_factory_ = base::MakeRefCounted<value_store::ValueStoreFactoryImpl>(
-      wallet_base_directory);
-  delegate_ = std::make_unique<TxStorageDelegateImpl>(prefs, store_factory_,
-                                                      ui_task_runner);
+                     std::unique_ptr<TxStorageDelegate> tx_storage_delegate)
+    : prefs_(prefs),
+      json_rpc_service_(json_rpc_service),
+      delegate_(std::move(tx_storage_delegate)) {
   account_resolver_delegate_ =
       std::make_unique<AccountResolverDelegateImpl>(keyring_service);
 
