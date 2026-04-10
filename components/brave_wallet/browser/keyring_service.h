@@ -310,6 +310,9 @@ class KeyringService : public mojom::KeyringService {
   SignMessageByPolkadotKeyring(const mojom::AccountIdPtr& account_id,
                                base::span<const uint8_t> message);
 
+  // Exposes profile prefs to collaborators created by tests.
+  PrefService* GetProfilePrefsForTesting() const { return profile_prefs_; }
+
   const std::vector<mojom::AccountInfoPtr>& GetAllAccountInfos();
   mojom::AccountInfoPtr FindAccount(const mojom::AccountIdPtr& account_id);
   mojom::AccountInfoPtr GetSelectedWalletAccount();
