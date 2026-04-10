@@ -1,8 +1,8 @@
 diff --git a/chrome/browser/ui/browser.cc b/chrome/browser/ui/browser.cc
-index 8f8852b2af1acfa4ec985fd1c8b50563b991b12a..5298abde3bb4893781726f68fa18d15e461995bb 100644
+index 4131009ba3183107ffadc80dcfab67e572318a2b..594a5132e6506c311b66b7d5c38581f2beba1a49 100644
 --- a/chrome/browser/ui/browser.cc
 +++ b/chrome/browser/ui/browser.cc
-@@ -553,7 +553,7 @@ Browser* Browser::Create(const CreateParams& params) {
+@@ -548,7 +548,7 @@ Browser* Browser::Create(const CreateParams& params) {
    // should handle this; see e.g. crbug.com/1141608 and crbug.com/1261628.
    CHECK_EQ(CreationStatus::kOk, GetCreationStatusForProfile(params.profile));
  
@@ -11,7 +11,7 @@ index 8f8852b2af1acfa4ec985fd1c8b50563b991b12a..5298abde3bb4893781726f68fa18d15e
    Browser* const browser_ptr = browser.get();
    BrowserManagerServiceFactory::GetForProfile(params.profile)
        ->AddBrowser(std::move(browser));
-@@ -569,7 +569,7 @@ std::unique_ptr<Browser> Browser::DeprecatedCreateOwnedForTesting(
+@@ -564,7 +564,7 @@ std::unique_ptr<Browser> Browser::DeprecatedCreateOwnedForTesting(
    // should handle this; see e.g. crbug.com/1141608 and crbug.com/1261628.
    CHECK_EQ(CreationStatus::kOk, GetCreationStatusForProfile(params.profile));
  
@@ -20,7 +20,7 @@ index 8f8852b2af1acfa4ec985fd1c8b50563b991b12a..5298abde3bb4893781726f68fa18d15e
    BrowserManagerServiceFactory::GetForProfile(params.profile)
        ->AddBrowserForTesting(browser.get());
    return browser;
-@@ -582,7 +582,7 @@ Browser::Browser(const CreateParams& params)
+@@ -577,7 +577,7 @@ Browser::Browser(const CreateParams& params)
        window_(nullptr),
        tab_strip_model_delegate_(
            std::make_unique<chrome::BrowserTabStripModelDelegate>(this)),
@@ -29,7 +29,7 @@ index 8f8852b2af1acfa4ec985fd1c8b50563b991b12a..5298abde3bb4893781726f68fa18d15e
            tab_strip_model_delegate_.get(),
            params.profile,
            // Tab groups are disabled for app browsers.
-@@ -1293,6 +1293,7 @@ void Browser::OnWindowClosing() {
+@@ -1288,6 +1288,7 @@ void Browser::OnWindowClosing() {
    if (tab_restore_service && notify_restore_service) {
      tab_restore_service->BrowserClosing(GetFeatures().live_tab_context());
    }

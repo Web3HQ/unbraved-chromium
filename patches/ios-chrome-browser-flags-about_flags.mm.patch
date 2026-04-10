@@ -1,5 +1,5 @@
 diff --git a/ios/chrome/browser/flags/about_flags.mm b/ios/chrome/browser/flags/about_flags.mm
-index 9c5e65e52fd590066223bd949655fe65cbb18184..55226c26a8901049ff4edac845dad862642dfd72 100644
+index 4b2bd325d47a1459bdd2656dfb350ae4c0a0e85c..2421060df29d0ccce36bd3dce4297391d32acbb3 100644
 --- a/ios/chrome/browser/flags/about_flags.mm
 +++ b/ios/chrome/browser/flags/about_flags.mm
 @@ -1378,6 +1378,7 @@ const FeatureEntry::FeatureVariation kAssistantContainerVariations[] = {

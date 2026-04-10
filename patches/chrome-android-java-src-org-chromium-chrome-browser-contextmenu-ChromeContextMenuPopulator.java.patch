@@ -1,8 +1,8 @@
 diff --git a/chrome/android/java/src/org/chromium/chrome/browser/contextmenu/ChromeContextMenuPopulator.java b/chrome/android/java/src/org/chromium/chrome/browser/contextmenu/ChromeContextMenuPopulator.java
-index b77a05940f5f5c5a69fbb9257ac91f188fcdf7fd..66bd252ad6f1c2e26c6578da8dd99e630443bda1 100644
+index 297d9503af61fec4f6eb2c412ac0e3c2c3c982ce..d140b30dbec5a9b3a74e17a9e7539eadc81ca4a0 100644
 --- a/chrome/android/java/src/org/chromium/chrome/browser/contextmenu/ChromeContextMenuPopulator.java
 +++ b/chrome/android/java/src/org/chromium/chrome/browser/contextmenu/ChromeContextMenuPopulator.java
-@@ -244,6 +244,7 @@ public class ChromeContextMenuPopulator implements ContextMenuPopulator {
+@@ -245,6 +245,7 @@ public class ChromeContextMenuPopulator implements ContextMenuPopulator {
              Action.EXIT_PICTURE_IN_PICTURE,
              Action.OPEN_IN_INCOGNITO_WINDOW,
              Action.VIEW_PAGE_SOURCE,
@@ -10,7 +10,7 @@ index b77a05940f5f5c5a69fbb9257ac91f188fcdf7fd..66bd252ad6f1c2e26c6578da8dd99e63
          })
          @Retention(RetentionPolicy.SOURCE)
          public @interface Action {
-@@ -300,7 +301,7 @@ public class ChromeContextMenuPopulator implements ContextMenuPopulator {
+@@ -301,7 +302,7 @@ public class ChromeContextMenuPopulator implements ContextMenuPopulator {
              int EXIT_PICTURE_IN_PICTURE = 50;
              int OPEN_IN_INCOGNITO_WINDOW = 51;
              int VIEW_PAGE_SOURCE = 52;
@@ -19,7 +19,7 @@ index b77a05940f5f5c5a69fbb9257ac91f188fcdf7fd..66bd252ad6f1c2e26c6578da8dd99e63
          }
  
          // LINT.ThenChange(/tools/metrics/histograms/enums.xml:ContextMenuOptionAndroid)
-@@ -533,6 +534,7 @@ public class ChromeContextMenuPopulator implements ContextMenuPopulator {
+@@ -541,6 +542,7 @@ public class ChromeContextMenuPopulator implements ContextMenuPopulator {
              if (!MailTo.isMailTo(mParams.getLinkUrl().getSpec())
                      && !UrlUtilities.isTelScheme(mParams.getLinkUrl())) {
                  linkGroup.add(createListItem(Item.COPY_LINK_ADDRESS));
