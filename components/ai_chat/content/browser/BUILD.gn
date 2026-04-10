@@ -108,6 +108,7 @@ source_set("unit_tests") {
     "//services/service_manager/public/cpp",
     "//testing/gmock",
     "//testing/gtest",
+    "//third_party/blink/public/mojom:mojom_platform",
     "//url",
   ]
 
