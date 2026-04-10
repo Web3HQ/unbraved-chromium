@@ -1,8 +1,8 @@
 diff --git a/third_party/blink/renderer/platform/runtime_enabled_features.json5 b/third_party/blink/renderer/platform/runtime_enabled_features.json5
-index 3034b7fc110c6d24d6fe86e4c4416310449bbfd4..20fec526be8cbf51fefb1481ea856288298a2e7e 100644
+index 89301f737c6a1f4043a47366db604967159b7cb6..906e4e7d9ee7ab8c3b185ce0d54eceffb29bb746 100644
 --- a/third_party/blink/renderer/platform/runtime_enabled_features.json5
 +++ b/third_party/blink/renderer/platform/runtime_enabled_features.json5
-@@ -875,6 +875,11 @@
+@@ -913,6 +913,11 @@
        public: true,
        status: "stable",
      },
@@ -14,7 +14,7 @@ index 3034b7fc110c6d24d6fe86e4c4416310449bbfd4..20fec526be8cbf51fefb1481ea856288
      {
        name: "BrowserInitiatedAutomaticPictureInPicture",
        public: true,
-@@ -2614,6 +2619,7 @@
+@@ -2693,6 +2698,7 @@
        // In-development features for the File System Access API.
        name: "FileSystemAccessAPIExperimental",
        status: "experimental",
@@ -22,7 +22,7 @@ index 3034b7fc110c6d24d6fe86e4c4416310449bbfd4..20fec526be8cbf51fefb1481ea856288
      },
      {
        // The FileSystemHandle.getCloudIdentifiers() method (see
-@@ -2628,6 +2634,7 @@
+@@ -2707,6 +2713,7 @@
        // Non-OPFS File System Access API.
        name: "FileSystemAccessLocal",
        status: {"default": "stable"},
@@ -30,7 +30,7 @@ index 3034b7fc110c6d24d6fe86e4c4416310449bbfd4..20fec526be8cbf51fefb1481ea856288
      },
      {
        name: "FileSystemAccessLockingScheme",
-@@ -3714,6 +3721,7 @@
+@@ -3823,6 +3830,7 @@
      {
        name: "MiddleClickAutoscroll",
        status: "test",
