@@ -715,6 +715,12 @@
   <message name="IDS_AUTOFILL_TRAVEL_TITLE" desc="Title for the Your saved info settings sub page that allows user to manage their list of saved travel info. Sentence-Cased." formatter_data="android_java">
     Travel
   </message>
+  <!-- TODO(crbug.com/498115758): Make Shopping strings translatable and add to Android and iOS. -->
+  <if expr="not is_android and not is_ios">
+    <message name="IDS_AUTOFILL_SHOPPING_TITLE" desc="Title for the Your saved info settings sub page that allows user to manage their list of saved shopping info. Sentence-Cased." formatter_data="android_java" translateable="false">
+      Shopping
+    </message>
+  </if>
 
   <!-- Autofill and passwords entry point summaries - mobile only -->
   <if expr="is_android">
@@ -859,6 +865,12 @@
     </message>
     <message name="IDS_AUTOFILL_TRAVEL_OPT_IN_TOGGLE_SUB_LABEL" desc="Sub-label for a toggle allowing users to opt into Enhanced Autofill for travel-related data types. Sentence-Cased." formatter_data="android_java">
       Includes information such as flight bookings and vehicle info
+    </message>
+    <message name="IDS_AUTOFILL_SHOPPING_OPT_IN_TOGGLE_LABEL" desc="Label for a toggle allowing users to opt into Enhanced Autofill for shopping-related data types. Sentence-Cased." formatter_data="android_java" translateable="false">
+      Fill shopping info
+    </message>
+    <message name="IDS_AUTOFILL_SHOPPING_OPT_IN_TOGGLE_SUB_LABEL" desc="Sub-label for a toggle allowing users to opt into Enhanced Autofill for shopping-related data types. Sentence-Cased." formatter_data="android_java" translateable="false">
+      Includes information such as orders and shipments
     </message>
   </if>
 
@@ -1160,7 +1172,7 @@
   </message>
 
   <!-- Save/ Update dialog-->
-  <message name="IDS_AUTOFILL_GOOGLE_WALLET_TITLE" desc="The name of the Brave Wallet product. This is displayed in some enhanced autofill save and update prompts as a link. Upon clicking the user is taken to a their wallet passes pages. For example the user would see 'Your info is saved to Brave Wallet for elisa.beckett@gmail.com'">
+  <message name="IDS_AUTOFILL_GOOGLE_WALLET_TITLE" desc="The name of the Brave Wallet product. This is displayed in some enhanced autofill save and update prompts as a link. Upon clicking the user is taken to a their wallet passes pages. For example the user would see 'Your info is saved to Brave Wallet for elisa.beckett@gmail.com'" formatter_data="android_java">
     Brave Wallet
   </message>
   <message name="IDS_AUTOFILL_AI_UPDATE_ENTITY_TO_WALLET_DIALOG_SUBTITLE" desc="A description that appears beneath the Update title prompt asking users whether they want to update their data stored in Brave Wallet. For example, the user previously saved information related to their passport. Now, the user is filling out a new form either with additional details associated with the passport or with different values than what was previously saved. The interface shows new or modified values at the top with blue dots to indicate they’re new. Existing information associated with the passport that isn’t changing appears at the bottom without blue dots. Depending on the form and what Brave recognizes, there might be just one or several pieces of data updated at this moment. This is a similar moment to updating a password or credit card with Brave.">
@@ -1226,9 +1238,6 @@
     </message>
     <message name="IDS_AUTOFILL_MANAGE_YOUR_INFO_LINK" desc="Link text prompting users to manage their autofill information.">
       manage your info
-    </message>
-    <message name="IDS_AUTOFILL_AI_SAVE_ENTITY_TO_WALLET_SETTINGS_SUBTITLE" desc="A description that appears beneath the Save title prompt asking users whether they want to save their data to Brave Wallet from Settings.">
-      Your info is saved to <ph name="IDS_AUTOFILL_GOOGLE_WALLET_TITLE">$1<ex>Brave Wallet</ex></ph> for <ph name="ACCOUNT">$2<ex>alexpark@gmail.com</ex></ph>. You can use it across Brave products to fill forms faster.
     </message>
     <message name="IDS_AUTOFILL_AI_UPDATE_ENTITY_DIALOG_UPDATED_ATTRIBUTE_ACCESSIBLE_NAME" desc="Used in entity update dialogs, as the accessible names for rows with updated attributes">
       <ph name="ATTRIBUTE_NAME">$1<ex>Passport number</ex></ph> updated
@@ -1425,6 +1434,10 @@
       Brave can autofill difficult fields that standard autofill might miss
     </message>
   </if>
+  <!-- TODO: crbug.com/499300722 - Move the string back to /chrome/app/settings_strings.grdp after Android-specific string is added. -->
+  <message name="IDS_SETTINGS_REMOTE_WALLET_PASSES_LINK_LABEL" desc="The title and ARIA (accessibility) label for a link in Brave settings that opens the payment methods settings on https://wallet.google.com/wallet/passes or the Brave Wallet icon used for entities stored in Brave Wallet in Android settings. Note that the ARIA role and the link icon already convey that this is a link that will be opened when you click on it. Therefore, the message does not contain a verb." formatter_data="android_java">
+    Your Brave Wallet passes
+  </message>
 
   <message name="IDS_AUTOFILL_WALLET_DATA_SHARING_PROMO_TITLE" desc="Title of the promo that encourages users to allow Wallet to share data with Brave." formatter_data="android_java">
     Allow Wallet to share data
