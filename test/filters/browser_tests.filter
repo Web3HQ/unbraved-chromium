@@ -2083,13 +2083,6 @@
 -PrivacySandboxAttestationsBrowserTestBase.PreinstalledAttestationListPresent
 -PrivacySandboxSettingsAttestPrivateAggregationInProtectedAudienceBrowserTest.*
 
-# This test fails because we disable
-# content_settings::features::kTrackingProtection3pcd
--All/ExperimentManagerImplSyntheticTrialTest.RegistersSyntheticTrial/*
--TrackingProtectionBubbleViewBrowserTest.ToggleCreatesTrackingProtectionException
--TrackingProtectionBubbleViewBrowserTest.TrackingProtectionsButtonUpdatesTrackingProtectionException
--TrackingProtectionReminderDesktopUiController*
-
 # These tests fail because we disable features::kDestroyProfileOnBrowserClose
 -DestroyProfileOnBrowserClose/ProfileHelperTestWithDestroyProfile.*
 -DestroyProfileOnBrowserClose/ProfileManagerBrowserTest.*
